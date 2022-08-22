@@ -96,7 +96,7 @@ class SimpleNN(nn.Module):
 
 # Training
 learning_rate = 1e-3
-num_epochs = 5
+num_epochs = 25
 embedding_dim = 16
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
