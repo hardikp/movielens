@@ -1,3 +1,4 @@
+# python3 factorization_simple.py --num_epochs=25 --batch_size=1024 --learning_rate=1e-3 --embedding_dim=16
 Epoch: 0 | Loss: 2.0696 | Train Accuracy: 11.83 | Test Accuracy: 13.40
 Epoch: 1 | Loss: 1.2135 | Train Accuracy: 18.97 | Test Accuracy: 22.33
 Epoch: 2 | Loss: 0.8422 | Train Accuracy: 24.26 | Test Accuracy: 24.85

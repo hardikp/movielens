@@ -2,6 +2,20 @@
 
 ## 2022-08-22
 
+### 64 Embedding size
+
+```shell
+$ python3 factorization_simple.py --num_epochs=25 --batch_size=1024 --learning_rate=1e-3 --embedding_dim=64
+```
+
+### 32 Embedding size
+
+```shell
+$ python3 factorization_simple.py --num_epochs=25 --batch_size=1024 --learning_rate=1e-3 --embedding_dim=32
+```
+
+### 25 epochs
+
 ```shell
 $ python3 factorization_simple.py --num_epochs=25 --batch_size=1024 --learning_rate=1e-3 --embedding_dim=16
 ```
@@ -19,6 +33,10 @@ Parameters:
 Output: training_log_20220822_071024.txt
 
 ## 2022-08-21
+
+```shell
+$ python3 factorization_simple.py --num_epochs=5 --batch_size=1024 --learning_rate=1e-3 --embedding_dim=16
+```
 
 file: factorization_simple.py
 Parameters:

@@ -132,6 +132,9 @@ def write_training_log(
 
 
 def main(argv):
+    print('Embedding size:', FLAGS.embedding_dim)
+    print('Learning rate:', FLAGS.learning_rate)
+
     # Load data
     movies_df, ratings_train_df, ratings_test_df, movie_to_idx, user_to_idx = load_data(
         FLAGS.data_dir
