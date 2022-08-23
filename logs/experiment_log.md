@@ -1,17 +1,29 @@
 # Experiment Log
 
-## 2022-08-22
+## 2022-08-23
 
-### 64 Embedding size
+### 1e-2/1e-4 learning_rate
 
 ```shell
-$ python3 factorization_simple.py --num_epochs=25 --batch_size=1024 --learning_rate=1e-3 --embedding_dim=64
+$ python3 factorization_simple.py --num_epochs=25 --batch_size=1024 --learning_rate=1e-2 --embedding_dim=16
+$ python3 factorization_simple.py --num_epochs=25 --batch_size=1024 --learning_rate=1e-4 --embedding_dim=16
 ```
 
-### 32 Embedding size
+### 512/2048 batch_sizes
+
+```shell
+$ python3 factorization_simple.py --num_epochs=25 --batch_size=512 --learning_rate=1e-3 --embedding_dim=16
+$ python3 factorization_simple.py --num_epochs=25 --batch_size=2048 --learning_rate=1e-3 --embedding_dim=16
+```
+
+## 2022-08-22
+
+### 32/64/128 Embedding size
 
 ```shell
 $ python3 factorization_simple.py --num_epochs=25 --batch_size=1024 --learning_rate=1e-3 --embedding_dim=32
+$ python3 factorization_simple.py --num_epochs=25 --batch_size=1024 --learning_rate=1e-3 --embedding_dim=64
+$ python3 factorization_simple.py --num_epochs=25 --batch_size=1024 --learning_rate=1e-3 --embedding_dim=128
 ```
 
 ### 25 epochs

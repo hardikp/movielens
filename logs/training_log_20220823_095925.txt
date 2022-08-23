@@ -1,0 +1,26 @@
+# time python3 factorization_simple.py --num_epochs=25 --batch_size=1024 --learning_rate=1e-2 --embedding_dim=16
+Epoch: 0 | Loss: 0.9884 | Train Accuracy: 22.75 | Test Accuracy: 26.36
+Epoch: 1 | Loss: 0.6610 | Train Accuracy: 27.38 | Test Accuracy: 27.40
+Epoch: 2 | Loss: 0.6107 | Train Accuracy: 28.47 | Test Accuracy: 27.73
+Epoch: 3 | Loss: 0.5874 | Train Accuracy: 29.05 | Test Accuracy: 27.92
+Epoch: 4 | Loss: 0.5738 | Train Accuracy: 29.44 | Test Accuracy: 27.98
+Epoch: 5 | Loss: 0.5650 | Train Accuracy: 29.74 | Test Accuracy: 28.02
+Epoch: 6 | Loss: 0.5589 | Train Accuracy: 29.94 | Test Accuracy: 28.04
+Epoch: 7 | Loss: 0.5544 | Train Accuracy: 30.12 | Test Accuracy: 28.10
+Epoch: 8 | Loss: 0.5508 | Train Accuracy: 30.26 | Test Accuracy: 28.10
+Epoch: 9 | Loss: 0.5479 | Train Accuracy: 30.38 | Test Accuracy: 28.13
+Epoch: 10 | Loss: 0.5456 | Train Accuracy: 30.47 | Test Accuracy: 28.11
+Epoch: 11 | Loss: 0.5436 | Train Accuracy: 30.56 | Test Accuracy: 28.15
+Epoch: 12 | Loss: 0.5419 | Train Accuracy: 30.63 | Test Accuracy: 28.17
+Epoch: 13 | Loss: 0.5404 | Train Accuracy: 30.71 | Test Accuracy: 28.16
+Epoch: 14 | Loss: 0.5391 | Train Accuracy: 30.77 | Test Accuracy: 28.16
+Epoch: 15 | Loss: 0.5379 | Train Accuracy: 30.82 | Test Accuracy: 28.19
+Epoch: 16 | Loss: 0.5368 | Train Accuracy: 30.88 | Test Accuracy: 28.21
+Epoch: 17 | Loss: 0.5359 | Train Accuracy: 30.91 | Test Accuracy: 28.21
+Epoch: 18 | Loss: 0.5350 | Train Accuracy: 30.97 | Test Accuracy: 28.21
+Epoch: 19 | Loss: 0.5342 | Train Accuracy: 31.00 | Test Accuracy: 28.20
+Epoch: 20 | Loss: 0.5334 | Train Accuracy: 31.03 | Test Accuracy: 28.22
+Epoch: 21 | Loss: 0.5328 | Train Accuracy: 31.07 | Test Accuracy: 28.23
+Epoch: 22 | Loss: 0.5321 | Train Accuracy: 31.10 | Test Accuracy: 28.25
+Epoch: 23 | Loss: 0.5315 | Train Accuracy: 31.13 | Test Accuracy: 28.23
+Epoch: 24 | Loss: 0.5309 | Train Accuracy: 31.15 | Test Accuracy: 28.22
