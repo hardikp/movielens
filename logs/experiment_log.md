@@ -2,6 +2,10 @@
 
 ## 2022-08-22
 
+```shell
+$ python3 factorization_simple.py --num_epochs=25 --batch_size=1024 --learning_rate=1e-3 --embedding_dim=16
+```
+
 file: factorization_simple.py
 Parameters:
 * learning_rate: 1e-3 (Adam optimizer)
