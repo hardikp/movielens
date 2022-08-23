@@ -16,8 +16,9 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 flags.DEFINE_integer("batch_size", 1024, "Batch size")
 flags.DEFINE_float("learning_rate", 1e-3, "Learning rate")
 flags.DEFINE_integer("embedding_dim", 16, "Embedding dimension")
-flags.DEFINE_integer("num_epochs", 25, "Num epochs")
+flags.DEFINE_integer("num_epochs", 5, "Num epochs")
 flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
+flags.DEFINE_boolean("debug", False, 'Debug flag')
 
 
 def load_data(data_dir):
@@ -136,6 +137,7 @@ def main(argv):
         FLAGS.data_dir
     )
 
+    # Dataloader
     train_dataset = MovieLensDataset(
         movies_df, ratings_train_df, movie_to_idx, user_to_idx
     )
@@ -150,7 +152,7 @@ def main(argv):
         test_dataset, batch_size=FLAGS.batch_size, shuffle=True, num_workers=0
     )
 
-    model = Factorization(len(user_to_idx), len(movie_idx), FLAGS.embedding_dim)
+    model = Factorization(len(user_to_idx), len(movie_to_idx), FLAGS.embedding_dim)
     model = model.to(device)
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
@@ -159,6 +161,7 @@ def main(argv):
         datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     )
 
+    # Train + Eval
     for epoch in range(FLAGS.num_epochs):
         train_running_loss = 0.0
         train_corrects = 0.0
@@ -182,6 +185,9 @@ def main(argv):
             train_corrects += get_correct_predictions(logits, labels)
             train_count += logits.shape[0]
 
+            if FLAGS.debug and i == 2:
+                break
+
         model = model.eval()
 
         for i, data in enumerate(tqdm(test_dataloader)):
@@ -192,6 +198,9 @@ def main(argv):
 
             test_corrects += get_correct_predictions(logits, labels)
             test_count += logits.shape[0]
+
+            if FLAGS.debug and i == 2:
+                break
 
         write_training_log(
             training_log,
