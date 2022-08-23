@@ -18,7 +18,7 @@ flags.DEFINE_float("learning_rate", 1e-3, "Learning rate")
 flags.DEFINE_integer("embedding_dim", 16, "Embedding dimension")
 flags.DEFINE_integer("num_epochs", 5, "Num epochs")
 flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
-flags.DEFINE_boolean("debug", False, 'Debug flag')
+flags.DEFINE_boolean("debug", False, "Debug flag")
 
 
 def load_data(data_dir):
@@ -132,8 +132,10 @@ def write_training_log(
 
 
 def main(argv):
-    print('Embedding size:', FLAGS.embedding_dim)
-    print('Learning rate:', FLAGS.learning_rate)
+    print("Batch size:", FLAGS.batch_size)
+    print("Embedding size:", FLAGS.embedding_dim)
+    print("Learning rate:", FLAGS.learning_rate)
+    print("Num epochs:", FLAGS.num_epochs)
 
     # Load data
     movies_df, ratings_train_df, ratings_test_df, movie_to_idx, user_to_idx = load_data(
