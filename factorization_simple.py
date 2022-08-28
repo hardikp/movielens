@@ -1,14 +1,14 @@
-from absl import app
-from absl import flags
+import datetime
 import os
+
 import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
-from tqdm import tqdm
-import datetime
+from absl import app, flags
 from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, Dataset
+from tqdm import tqdm
 
 FLAGS = flags.FLAGS
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

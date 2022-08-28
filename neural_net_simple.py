@@ -1,14 +1,14 @@
-from absl import app
-from absl import flags
+import datetime
 import os
+
 import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
-from tqdm import tqdm
-import datetime
+from absl import app, flags
 from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, Dataset
+from tqdm import tqdm
 
 FLAGS = flags.FLAGS
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -100,7 +100,7 @@ class NeuralNet(nn.Module):
         out = torch.cat([user, movie, similarity], 1)
         out = torch.sigmoid(self.combined_linear(out))
         out = torch.reshape(out, (-1,))
-        
+
         # User ratings can vary from 0.5 to 5.0 in increments of 0.5:
         # 0.5, 1.0, 1.5, ..., 4.5, 5.0
         # Map the output to 0.25 to 5.25.
