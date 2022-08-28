@@ -80,20 +80,30 @@ class NeuralNet(nn.Module):
     def __init__(self, user_vocab_size, movie_vocab_size, embedding_dim):
         super(NeuralNet, self).__init__()
         self.user_embeds = nn.Embedding(user_vocab_size, embedding_dim)
-        self.user_linear = nn.Linear(embedding_dim, 16)
-
         self.movie_embeds = nn.Embedding(movie_vocab_size, embedding_dim)
-        self.movie_linear = nn.Linear(embedding_dim, 16)
 
-        self.combined_linear = nn.Linear(33, 1)
+        # Linear layers
+        self.user_linear = []
+        self.movie_linear = []
+        in_size = embedding_dim
+        while in_size > 1:
+            self.user_linear.append(nn.Linear(in_size, in_size / 2))
+            self.movie_linear.append(nn.Linear(in_size, in_size / 2))
+            in_size /= 2
+
+        # Final out_size would be 1 for both movie tower and user tower
+        # So, the input_size would be 3:
+        # 1 for movie_toward + 1 for user_tower + 1 for cosine_similarity
+        self.combined_linear = nn.Linear(3, 1)
 
     def forward(self, user_idx, movie_idx):
         user = self.user_embeds(user_idx)
         movie = self.movie_embeds(movie_idx)
         similarity = F.cosine_similarity(user, movie)
 
-        user = F.relu(self.user_linear(user))
-        movie = F.relu(self.movie_linear(movie))
+        for i in len(self.user_linear):
+            user = F.relu(self.user_linear[i](user))
+            movie = F.relu(self.movie_linear[i](movie))
 
         similarity = torch.reshape(similarity, (-1, 1))
         out = torch.cat([user, movie, similarity], 1)

@@ -2,11 +2,16 @@
 
 ## 2022-08-28
 
-### Simple Neural Network 1e-2 / 1e-3
+### Deep Neural Network
 
 ```shell
-$ time python3 neural_net_simple.py --num_epochs=25 --batch_size=512 --learning_rate=1e-2 --embedding_dim=32
-$ time python3 neural_net_simple.py --num_epochs=25 --batch_size=512 --learning_rate=1e-3 --embedding_dim=32
+$ time python3 neural_net_ff.py --num_epochs=25 --batch_size=512 --learning_rate=1e-3 --embedding_dim=128
+```
+
+### Simple Neural Network
+
+```shell
+$ time python3 neural_net_simple.py --num_epochs=25 --batch_size=512 --learning_rate=1e-3 --embedding_dim=128
 ```
 
 ## 2022-08-23
