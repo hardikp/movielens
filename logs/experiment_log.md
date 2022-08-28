@@ -1,5 +1,14 @@
 # Experiment Log
 
+## 2022-08-28
+
+### Simple Neural Network 1e-2 / 1e-3
+
+```shell
+$ time python3 neural_net_simple.py --num_epochs=25 --batch_size=512 --learning_rate=1e-2 --embedding_dim=32
+$ time python3 neural_net_simple.py --num_epochs=25 --batch_size=512 --learning_rate=1e-3 --embedding_dim=32
+```
+
 ## 2022-08-23
 
 ### 1e-2/1e-4 learning_rate
