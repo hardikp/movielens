@@ -87,9 +87,10 @@ class NeuralNet(nn.Module):
         self.movie_linear = []
         in_size = embedding_dim
         while in_size > 1:
-            self.user_linear.append(nn.Linear(in_size, in_size / 2))
-            self.movie_linear.append(nn.Linear(in_size, in_size / 2))
-            in_size /= 2
+            out_size = int(in_size / 2)
+            self.user_linear.append(nn.Linear(in_size, out_size).to(device))
+            self.movie_linear.append(nn.Linear(in_size, out_size).to(device))
+            in_size = out_size
 
         # Final out_size would be 1 for both movie tower and user tower
         # So, the input_size would be 3:
@@ -101,7 +102,7 @@ class NeuralNet(nn.Module):
         movie = self.movie_embeds(movie_idx)
         similarity = F.cosine_similarity(user, movie)
 
-        for i in len(self.user_linear):
+        for i in range(len(self.user_linear)):
             user = F.relu(self.user_linear[i](user))
             movie = F.relu(self.movie_linear[i](movie))
 
