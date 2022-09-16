@@ -19,6 +19,7 @@ flags.DEFINE_integer("embedding_dim", 16, "Embedding dimension")
 flags.DEFINE_integer("num_epochs", 5, "Num epochs")
 flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
+flags.DEFINE_float("dropout", 0.25, "Dropout")
 
 
 def load_data(data_dir):
@@ -77,7 +78,7 @@ class MovieLensDataset(Dataset):
 
 # Model
 class NeuralNet(nn.Module):
-    def __init__(self, user_vocab_size, movie_vocab_size, embedding_dim):
+    def __init__(self, user_vocab_size, movie_vocab_size, embedding_dim, dropout_rate):
         super(NeuralNet, self).__init__()
         self.user_embeds = nn.Embedding(user_vocab_size, embedding_dim)
         self.user_linear = nn.Linear(embedding_dim, 16)
@@ -87,13 +88,18 @@ class NeuralNet(nn.Module):
 
         self.combined_linear = nn.Linear(33, 1)
 
+        self.dropout = nn.Dropout(dropout_rate)
+
     def forward(self, user_idx, movie_idx):
         user = self.user_embeds(user_idx)
+        user = self.dropout(user)
         movie = self.movie_embeds(movie_idx)
+        movie = self.dropout(movie)
         similarity = F.cosine_similarity(user, movie)
+        similarity = self.dropout(similarity)
 
-        user = F.relu(self.user_linear(user))
-        movie = F.relu(self.movie_linear(movie))
+        user = self.dropout(F.relu(self.user_linear(user)))
+        movie = self.dropout(F.relu(self.movie_linear(movie)))
 
         similarity = torch.reshape(similarity, (-1, 1))
         out = torch.cat([user, movie, similarity], 1)
@@ -149,6 +155,7 @@ def main(argv):
     print("Embedding size:", FLAGS.embedding_dim)
     print("Learning rate:", FLAGS.learning_rate)
     print("Num epochs:", FLAGS.num_epochs)
+    print("Dropout:", FLAGS.dropout)
 
     # Load data
     movies_df, ratings_train_df, ratings_test_df, movie_to_idx, user_to_idx = load_data(
@@ -170,7 +177,9 @@ def main(argv):
         test_dataset, batch_size=FLAGS.batch_size, shuffle=True, num_workers=0
     )
 
-    model = NeuralNet(len(user_to_idx), len(movie_to_idx), FLAGS.embedding_dim)
+    model = NeuralNet(
+        len(user_to_idx), len(movie_to_idx), FLAGS.embedding_dim, FLAGS.dropout
+    )
     model = model.to(device)
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
