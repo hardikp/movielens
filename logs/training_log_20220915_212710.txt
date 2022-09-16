@@ -1,0 +1,26 @@
+# time python3 neural_net_simple.py --num_epochs=25 --batch_size=512 --learning_rate=1e-3 --embedding_dim=128 --dropout=0.25
+Epoch: 0 | Loss: 0.8351 | Train Accuracy: 23.96 | Test Accuracy: 25.44
+Epoch: 1 | Loss: 0.7733 | Train Accuracy: 25.29 | Test Accuracy: 26.27
+Epoch: 2 | Loss: 0.7638 | Train Accuracy: 25.57 | Test Accuracy: 26.12
+Epoch: 3 | Loss: 0.7589 | Train Accuracy: 25.71 | Test Accuracy: 26.34
+Epoch: 4 | Loss: 0.7515 | Train Accuracy: 25.90 | Test Accuracy: 26.98
+Epoch: 5 | Loss: 0.7393 | Train Accuracy: 26.20 | Test Accuracy: 27.17
+Epoch: 6 | Loss: 0.7275 | Train Accuracy: 26.45 | Test Accuracy: 26.97
+Epoch: 7 | Loss: 0.7165 | Train Accuracy: 26.68 | Test Accuracy: 27.44
+Epoch: 8 | Loss: 0.7055 | Train Accuracy: 26.92 | Test Accuracy: 27.53
+Epoch: 9 | Loss: 0.6938 | Train Accuracy: 27.18 | Test Accuracy: 27.55
+Epoch: 10 | Loss: 0.6823 | Train Accuracy: 27.44 | Test Accuracy: 28.07
+Epoch: 11 | Loss: 0.6709 | Train Accuracy: 27.69 | Test Accuracy: 28.27
+Epoch: 12 | Loss: 0.6605 | Train Accuracy: 27.92 | Test Accuracy: 27.98
+Epoch: 13 | Loss: 0.6507 | Train Accuracy: 28.13 | Test Accuracy: 28.02
+Epoch: 14 | Loss: 0.6421 | Train Accuracy: 28.34 | Test Accuracy: 28.38
+Epoch: 15 | Loss: 0.6339 | Train Accuracy: 28.52 | Test Accuracy: 28.47
+Epoch: 16 | Loss: 0.6267 | Train Accuracy: 28.68 | Test Accuracy: 28.21
+Epoch: 17 | Loss: 0.6201 | Train Accuracy: 28.83 | Test Accuracy: 28.61
+Epoch: 18 | Loss: 0.6142 | Train Accuracy: 28.98 | Test Accuracy: 28.67
+Epoch: 19 | Loss: 0.6084 | Train Accuracy: 29.12 | Test Accuracy: 28.54
+Epoch: 20 | Loss: 0.6036 | Train Accuracy: 29.25 | Test Accuracy: 28.85
+Epoch: 21 | Loss: 0.5988 | Train Accuracy: 29.36 | Test Accuracy: 28.52
+Epoch: 22 | Loss: 0.5945 | Train Accuracy: 29.47 | Test Accuracy: 28.84
+Epoch: 23 | Loss: 0.5905 | Train Accuracy: 29.60 | Test Accuracy: 28.97
+Epoch: 24 | Loss: 0.5869 | Train Accuracy: 29.68 | Test Accuracy: 28.87
