@@ -21,11 +21,13 @@ flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
 flags.DEFINE_float("dropout", 0.25, "Dropout")
 
+
 def get_year(title):
     try:
         return int(title.split("(")[-1].split(")")[0])
     except:
         return 0
+
 
 def load_data(data_dir):
     movies_df = pd.read_csv(os.path.join(data_dir, "movies.csv"))
@@ -99,15 +101,36 @@ class MovieLensDataset(Dataset):
         movie_title = self.movie_title[movie_id]
         year = get_year(movie_title)
         movie_genres = self.movie_genres[movie_id]
-        genres = movie_genres.split('|')
+        genres = movie_genres.split("|")
 
         return {
             "user_id": torch.tensor([self.user_to_idx[user_id]], dtype=torch.long),
             "movie_id": torch.tensor([self.movie_to_idx[movie_id]], dtype=torch.long),
             "rating": torch.tensor([rating], dtype=torch.float),
-            "genres": torch.tensor([self.genre_to_idx[g] for g in genres], dtype=torch.long),
+            "genres": [self.genre_to_idx[g] for g in genres],
             "year": torch.tensor([self.year_to_idx[year]], dtype=torch.long),
         }
+
+
+def collate_fn(batch):
+    user_ids = torch.stack([d["user_id"] for d in batch]).to(device)
+    user_ids = torch.squeeze(user_ids)
+    movie_ids = torch.stack([d["movie_id"] for d in batch]).to(device)
+    movie_ids = torch.squeeze(movie_ids)
+    ratings = torch.stack([d["rating"] for d in batch]).to(device)
+    ratings = torch.squeeze(ratings)
+    years = torch.stack([d["year"] for d in batch]).to(device)
+    years = torch.squeeze(years)
+    genres = []
+    genre_offsets = []
+    current_offset = 0
+    for d in batch:
+        genres.extend(d["genres"])
+        genre_offsets.append(current_offset)
+        current_offset += len(d["genres"])
+    genres = torch.tensor(genres, dtype=torch.long).to(device)
+    genre_offsets = torch.tensor(genre_offsets, dtype=torch.long).to(device)
+    return (user_ids, movie_ids, ratings, genres, genre_offsets, years)
 
 
 # Model
@@ -128,7 +151,7 @@ class NeuralNet(nn.Module):
         self.movie_embeds = nn.Embedding(movie_vocab_size, embedding_dim)
         self.movie_linear = nn.Linear(embedding_dim, 16)
 
-        self.genre_embeds = nn.Embedding(genre_vocab_size, embedding_dim)
+        self.genre_embeds = nn.EmbeddingBag(genre_vocab_size, embedding_dim)
         self.genre_linear = nn.Linear(embedding_dim, 16)
 
         self.year_embeds = nn.Embedding(year_vocab_size, embedding_dim)
@@ -138,12 +161,12 @@ class NeuralNet(nn.Module):
 
         self.dropout = nn.Dropout(dropout_rate)
 
-    def forward(self, user_idx, movie_idx, genre_idxs, year_idx):
+    def forward(self, user_idx, movie_idx, genre_idxs, genre_offsets, year_idx):
         user = self.user_embeds(user_idx)
         user = self.dropout(user)
         movie = self.movie_embeds(movie_idx)
         movie = self.dropout(movie)
-        genres = self.genre_embeds(genre_idxs)
+        genres = self.genre_embeds(genre_idxs, genre_offsets)
         genres = self.dropout(genres)
         year = self.year_embeds(year_idx)
         year = self.dropout(year)
@@ -233,7 +256,11 @@ def main(argv):
         year_to_idx,
     )
     train_dataloader = DataLoader(
-        train_dataset, batch_size=FLAGS.batch_size, shuffle=True, num_workers=0
+        train_dataset,
+        batch_size=FLAGS.batch_size,
+        shuffle=True,
+        num_workers=0,
+        collate_fn=collate_fn,
     )
 
     test_dataset = MovieLensDataset(
@@ -269,12 +296,8 @@ def main(argv):
         model = model.train()
 
         for i, data in enumerate(tqdm(train_dataloader)):
-            user_idx = torch.squeeze(data["user_id"]).to(device)
-            movie_idx = torch.squeeze(data["movie_id"]).to(device)
-            genre_idxs = torch.squeeze(data["genres"]).to(device)
-            year_idx = torch.squeeze(data["year"]).to(device)
-            labels = torch.squeeze(data["rating"]).to(device)
-            logits = model(user_idx, movie_idx, genre_idxs, year_idx)
+            user_idx, movie_idx, labels, genre_idxs, genre_offsets, year_idx = data
+            logits = model(user_idx, movie_idx, genre_idxs, genre_offsets, year_idx)
             loss = loss_fn(logits, labels)
             optimizer.zero_grad()
             loss.backward()
