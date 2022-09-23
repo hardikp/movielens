@@ -267,7 +267,11 @@ def main(argv):
         movies_df, ratings_test_df, movie_to_idx, user_to_idx, genre_to_idx, year_to_idx
     )
     test_dataloader = DataLoader(
-        test_dataset, batch_size=FLAGS.batch_size, shuffle=True, num_workers=0
+        test_dataset,
+        batch_size=FLAGS.batch_size,
+        shuffle=True,
+        num_workers=0,
+        collate_fn=collate_fn,
     )
 
     model = NeuralNet(
