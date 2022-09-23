@@ -318,10 +318,8 @@ def main(argv):
         model = model.eval()
 
         for i, data in enumerate(tqdm(test_dataloader)):
-            user_idx = torch.squeeze(data["user_id"]).to(device)
-            movie_idx = torch.squeeze(data["movie_id"]).to(device)
-            labels = torch.squeeze(data["rating"]).to(device)
-            logits = model(user_idx, movie_idx)
+            user_idx, movie_idx, labels, genre_idxs, genre_offsets, year_idx = data
+            logits = model(user_idx, movie_idx, genre_idxs, genre_offsets, year_idx)
 
             test_corrects += get_correct_predictions(logits, labels)
             test_count += logits.shape[0]
