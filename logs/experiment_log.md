@@ -1,5 +1,11 @@
 # Experiment Log
 
+## 2022-09-23
+
+```shell
+time python3 nn_data1.py --num_epochs=25 --batch_size=512 --learning_rate=1e-3 --embedding_dim=128 --l_size_user=16 --l_size_movie=16 --l_size_genre=4 --l_size_year=4 --dropout=0.25
+```
+
 ## 2022-08-28
 
 ### Deep Neural Network

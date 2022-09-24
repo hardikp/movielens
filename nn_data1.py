@@ -20,6 +20,10 @@ flags.DEFINE_integer("num_epochs", 5, "Num epochs")
 flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
 flags.DEFINE_float("dropout", 0.25, "Dropout")
+flags.DEFINE_integer("l_size_user", 16, "user_id linear layer size")
+flags.DEFINE_integer("l_size_movie", 16, "movie_id linear layer size")
+flags.DEFINE_integer("l_size_genre", 16, "genre_ids linear layer size")
+flags.DEFINE_integer("l_size_year", 16, "year linear layer size")
 
 
 def get_year(title):
@@ -146,18 +150,27 @@ class NeuralNet(nn.Module):
     ):
         super(NeuralNet, self).__init__()
         self.user_embeds = nn.Embedding(user_vocab_size, embedding_dim)
-        self.user_linear = nn.Linear(embedding_dim, 16)
+        self.user_linear = nn.Linear(embedding_dim, FLAGS.l_size_user)
 
         self.movie_embeds = nn.Embedding(movie_vocab_size, embedding_dim)
-        self.movie_linear = nn.Linear(embedding_dim, 16)
+        self.movie_linear = nn.Linear(embedding_dim, FLAGS.l_size_movie)
 
-        self.genre_embeds = nn.EmbeddingBag(genre_vocab_size, embedding_dim)
-        self.genre_linear = nn.Linear(embedding_dim, 16)
+        if FLAGS.l_size_genre > 0:
+            self.genre_embeds = nn.EmbeddingBag(genre_vocab_size, embedding_dim)
+            self.genre_linear = nn.Linear(embedding_dim, FLAGS.l_size_genre)
 
-        self.year_embeds = nn.Embedding(year_vocab_size, embedding_dim)
-        self.year_linear = nn.Linear(embedding_dim, 16)
+        if FLAGS.l_size_year > 0:
+            self.year_embeds = nn.Embedding(year_vocab_size, embedding_dim)
+            self.year_linear = nn.Linear(embedding_dim, FLAGS.l_size_year)
 
-        self.combined_linear = nn.Linear(65, 1)
+        in_size = (
+            FLAGS.l_size_user
+            + FLAGS.l_size_movie
+            + FLAGS.l_size_genre
+            + FLAGS.l_size_year
+            + 1
+        )
+        self.combined_linear = nn.Linear(in_size, 1)
 
         self.dropout = nn.Dropout(dropout_rate)
 
@@ -166,21 +179,32 @@ class NeuralNet(nn.Module):
         user = self.dropout(user)
         movie = self.movie_embeds(movie_idx)
         movie = self.dropout(movie)
-        genres = self.genre_embeds(genre_idxs, genre_offsets)
-        genres = self.dropout(genres)
-        year = self.year_embeds(year_idx)
-        year = self.dropout(year)
 
         similarity = F.cosine_similarity(user, movie)
         similarity = self.dropout(similarity)
 
         user = self.dropout(F.relu(self.user_linear(user)))
         movie = self.dropout(F.relu(self.movie_linear(movie)))
-        genres = self.dropout(F.relu(self.genre_linear(genres)))
-        year = self.dropout(F.relu(self.year_linear(year)))
+
+        if FLAGS.l_size_genre > 0:
+            genres = self.genre_embeds(genre_idxs, genre_offsets)
+            genres = self.dropout(genres)
+            genres = self.dropout(F.relu(self.genre_linear(genres)))
+
+        if FLAGS.l_size_year > 0:
+            year = self.year_embeds(year_idx)
+            year = self.dropout(year)
+            year = self.dropout(F.relu(self.year_linear(year)))
 
         similarity = torch.reshape(similarity, (-1, 1))
-        out = torch.cat([user, movie, similarity, genres, year], 1)
+        if FLAGS.l_size_genre > 0 and FLAGS.l_size_year > 0:
+            out = torch.cat([user, movie, similarity, genres, year], 1)
+        elif FLAGS.l_size_genre > 0:
+            out = torch.cat([user, movie, similarity, genres], 1)
+        elif FLAGS.l_size_year > 0:
+            out = torch.cat([user, movie, similarity, year], 1)
+        else:
+            out = torch.cat([user, movie, similarity], 1)
         out = torch.sigmoid(self.combined_linear(out))
         out = torch.reshape(out, (-1,))
 
@@ -234,6 +258,10 @@ def main(argv):
     print("Learning rate:", FLAGS.learning_rate)
     print("Num epochs:", FLAGS.num_epochs)
     print("Dropout:", FLAGS.dropout)
+    print("l_size_user:", FLAGS.l_size_user)
+    print("l_size_movie:", FLAGS.l_size_movie)
+    print("l_size_genre:", FLAGS.l_size_genre)
+    print("l_size_year:", FLAGS.l_size_year)
 
     # Load data
     (
@@ -283,6 +311,7 @@ def main(argv):
         FLAGS.dropout,
     )
     model = model.to(device)
+    print(model)
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
     training_log = []
