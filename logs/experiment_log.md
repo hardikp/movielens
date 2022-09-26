@@ -1,5 +1,14 @@
 # Experiment Log
 
+## 2022-09-26
+
+```shell
+time python3 nn.py --num_epochs=25 --batch_size=512 --learning_rate=1e-3 --embedding_dim=128 --l_size_user=16 --l_size_movie=16 --l_size_genre=0 --l_size_year=0 --apply_emb_dropout=True --dropout=0
+time python3 nn.py --num_epochs=25 --batch_size=512 --learning_rate=1e-3 --embedding_dim=128 --l_size_user=16 --l_size_movie=16 --l_size_genre=0 --l_size_year=0 --apply_emb_dropout=True --dropout=0.25
+time python3 nn.py --num_epochs=25 --batch_size=512 --learning_rate=1e-3 --embedding_dim=128 --l_size_user=16 --l_size_movie=16 --l_size_genre=0 --l_size_year=0 --apply_emb_dropout=True --dropout=0.3
+time python3 nn.py --num_epochs=25 --batch_size=512 --learning_rate=1e-3 --embedding_dim=128 --l_size_user=16 --l_size_movie=16 --l_size_genre=0 --l_size_year=0 --apply_emb_dropout=True --dropout=0.35
+```
+
 ## 2022-09-23
 
 ```shell
