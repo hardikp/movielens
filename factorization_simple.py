@@ -1,3 +1,4 @@
+from builtins import enumerate, len, open, print, range, super
 import datetime
 import os
 
@@ -13,12 +14,13 @@ from tqdm import tqdm
 FLAGS = flags.FLAGS
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-flags.DEFINE_integer("batch_size", 1024, "Batch size")
+flags.DEFINE_integer("batch_size", 512, "Batch size")
 flags.DEFINE_float("learning_rate", 1e-3, "Learning rate")
-flags.DEFINE_integer("embedding_dim", 16, "Embedding dimension")
+flags.DEFINE_integer("embedding_dim", 128, "Embedding dimension")
 flags.DEFINE_integer("num_epochs", 5, "Num epochs")
 flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
+flags.DEFINE_float("l2_regularization_factor", 0.0, "L2 regularization factor")
 
 
 def load_data(data_dir):
@@ -160,7 +162,11 @@ def main(argv):
     model = Factorization(len(user_to_idx), len(movie_to_idx), FLAGS.embedding_dim)
     model = model.to(device)
     loss_fn = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=FLAGS.learning_rate,
+        weight_decay=FLAGS.l2_regularization_factor,
+    )
     training_log = []
     training_log_filepath = "training_log_{}.txt".format(
         datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
