@@ -20,6 +20,7 @@ flags.DEFINE_integer("num_epochs", 5, "Num epochs")
 flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
 flags.DEFINE_float("dropout", 0.25, "Dropout")
+flags.DEFINE_boolean("apply_emb_dropout", True, "Apply Dropout to Embeddings")
 flags.DEFINE_integer("l_size_user", 16, "user_id linear layer size")
 flags.DEFINE_integer("l_size_movie", 16, "movie_id linear layer size")
 flags.DEFINE_integer("l_size_genre", 16, "genre_ids linear layer size")
@@ -176,9 +177,11 @@ class NeuralNet(nn.Module):
 
     def forward(self, user_idx, movie_idx, genre_idxs, genre_offsets, year_idx):
         user = self.user_embeds(user_idx)
-        user = self.dropout(user)
         movie = self.movie_embeds(movie_idx)
-        movie = self.dropout(movie)
+
+        if FLAGS.apply_emb_dropout:
+            user = self.dropout(user)
+            movie = self.dropout(movie)
 
         similarity = F.cosine_similarity(user, movie)
         similarity = self.dropout(similarity)
@@ -188,12 +191,14 @@ class NeuralNet(nn.Module):
 
         if FLAGS.l_size_genre > 0:
             genres = self.genre_embeds(genre_idxs, genre_offsets)
-            genres = self.dropout(genres)
+            if FLAGS.apply_emb_dropout:
+                genres = self.dropout(genres)
             genres = self.dropout(F.relu(self.genre_linear(genres)))
 
         if FLAGS.l_size_year > 0:
             year = self.year_embeds(year_idx)
-            year = self.dropout(year)
+            if FLAGS.apply_emb_dropout:
+                year = self.dropout(year)
             year = self.dropout(F.relu(self.year_linear(year)))
 
         similarity = torch.reshape(similarity, (-1, 1))
