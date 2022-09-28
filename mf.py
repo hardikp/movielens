@@ -21,6 +21,7 @@ flags.DEFINE_integer("num_epochs", 5, "Num epochs")
 flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
 flags.DEFINE_float("l2_regularization_factor", 0.0, "L2 regularization factor")
+flags.DEFINE_boolean("learn_biases", False, "Learn user and movie biases")
 
 
 def load_data(data_dir):
@@ -77,7 +78,7 @@ class MovieLensDataset(Dataset):
         }
 
 
-# Model
+# Matrix Factorization model
 class Factorization(nn.Module):
     def __init__(self, user_vocab_size, movie_vocab_size, embedding_dim):
         super(Factorization, self).__init__()
@@ -99,6 +100,35 @@ class Factorization(nn.Module):
         # Cosine similarity can be between -1 and 1.
         similarity = similarity * 2.5 + 2.75
         return similarity
+
+
+# Matrix Factorization model with user & item biases
+class FactorizationBias(nn.Module):
+    def __init__(self, user_vocab_size, movie_vocab_size, embedding_dim):
+        super(FactorizationBias, self).__init__()
+        self.user_embeds = nn.Embedding(user_vocab_size, embedding_dim)
+        self.movie_embeds = nn.Embedding(movie_vocab_size, embedding_dim)
+        self.user_biases = nn.Embedding(user_vocab_size, 1)
+        self.movie_biases = nn.Embedding(movie_vocab_size, 1)
+
+    def forward(self, user_idx, movie_idx):
+        user = self.user_embeds(user_idx)
+        movie = self.movie_embeds(movie_idx)
+        similarity = F.cosine_similarity(user, movie)
+        # User ratings can vary from 0.5 to 5.0 in increments of 0.5:
+        # 0.5, 1.0, 1.5, ..., 4.5, 5.0
+        # Adjust the similarity to map the output to 0.25 to 5.25.
+        # This way, predicted values:
+        # - between 0.25 and 0.75 can be counted towards 0.5 rating.
+        # - between 0.75 and 1.25 can be counted towards 1.0 rating.
+        # And so on.
+        # Cosine similarity can be between -1 and 1.
+        similarity = similarity * 2.5 + 2.75
+
+        movie_bias = self.movie_biases(movie_idx)
+        user_bias = self.user_biases(user_idx)
+        prediction = similarity + user_bias.squeeze() + movie_bias.squeeze()
+        return prediction
 
 
 def get_correct_predictions(logit, target):
@@ -138,6 +168,7 @@ def main(argv):
     print("Embedding size:", FLAGS.embedding_dim)
     print("Learning rate:", FLAGS.learning_rate)
     print("Num epochs:", FLAGS.num_epochs)
+    print("L2 regularization factor:", FLAGS.l2_regularization_factor)
 
     # Load data
     movies_df, ratings_train_df, ratings_test_df, movie_to_idx, user_to_idx = load_data(
@@ -159,7 +190,13 @@ def main(argv):
         test_dataset, batch_size=FLAGS.batch_size, shuffle=True, num_workers=0
     )
 
-    model = Factorization(len(user_to_idx), len(movie_to_idx), FLAGS.embedding_dim)
+    if FLAGS.learn_biases is False:
+        model = Factorization(len(user_to_idx), len(movie_to_idx), FLAGS.embedding_dim)
+    else:
+        model = FactorizationBias(
+            len(user_to_idx), len(movie_to_idx), FLAGS.embedding_dim
+        )
+    print(model)
     model = model.to(device)
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(
