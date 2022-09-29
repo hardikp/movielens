@@ -1,4 +1,4 @@
-from builtins import enumerate, len, open, print, range, super
+from builtins import enumerate, int, len, open, print, range, super
 import datetime
 import os
 
@@ -21,7 +21,13 @@ flags.DEFINE_integer("num_epochs", 5, "Num epochs")
 flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
 flags.DEFINE_float("l2_regularization_factor", 0.0, "L2 regularization factor")
-flags.DEFINE_boolean("learn_biases", False, "Learn user and movie biases")
+
+
+def get_year(title):
+    try:
+        return int(title.split("(")[-1].split(")")[0])
+    except:
+        return 0
 
 
 def load_data(data_dir):
@@ -29,10 +35,19 @@ def load_data(data_dir):
     ratings_df = pd.read_csv(os.path.join(data_dir, "ratings.csv"))
     movie_to_idx = {m: i for i, m in enumerate(movies_df["movieId"].unique())}
     user_to_idx = {u: i for i, u in enumerate(ratings_df["userId"].unique())}
+    genres = movies_df["genres"].apply(lambda g: g.split("|"))
+    genres_unique = genres.apply(pd.Series).stack().reset_index(drop=True).unique()
+    genre_to_idx = {u: i for i, u in enumerate(genres_unique)}
+    year = movies_df["title"].apply(lambda t: get_year(t))
+    year_to_idx = {u: i for i, u in enumerate(year.unique())}
     num_users = len(user_to_idx)
     num_movies = len(movie_to_idx)
+    num_genres = len(genre_to_idx)
+    num_years = len(year_to_idx)
     print("num_users:", num_users)
     print("num_movies:", num_movies)
+    print("num_genres:", num_genres)
+    print("num_years:", num_years)
     print("num_ratings:", ratings_df.shape[0])
 
     ratings_train_df, ratings_test_df = train_test_split(
@@ -45,16 +60,34 @@ def load_data(data_dir):
         ["userId", "movieId", "rating", "timestamp"]
     ]
 
-    return movies_df, ratings_train_df, ratings_test_df, movie_to_idx, user_to_idx
+    return (
+        movies_df,
+        ratings_train_df,
+        ratings_test_df,
+        movie_to_idx,
+        user_to_idx,
+        genre_to_idx,
+        year_to_idx,
+    )
 
 
 class MovieLensDataset(Dataset):
-    def __init__(self, movies_df, ratings_df, movie_to_idx, user_to_idx):
+    def __init__(
+        self,
+        movies_df,
+        ratings_df,
+        movie_to_idx,
+        user_to_idx,
+        genre_to_idx,
+        year_to_idx,
+    ):
         self.movie_title = movies_df.set_index("movieId")["title"].T.to_dict()
         self.movie_genres = movies_df.set_index("movieId")["genres"].T.to_dict()
         self.ratings_df = ratings_df
         self.movie_to_idx = movie_to_idx
         self.user_to_idx = user_to_idx
+        self.genre_to_idx = genre_to_idx
+        self.year_to_idx = year_to_idx
 
     def __len__(self):
         return len(self.ratings_df)
@@ -67,51 +100,33 @@ class MovieLensDataset(Dataset):
         movie_id = self.ratings_df["movieId"][idx]
         rating = self.ratings_df["rating"][idx]
         movie_title = self.movie_title[movie_id]
+        year = get_year(movie_title)
         movie_genres = self.movie_genres[movie_id]
+        genres = movie_genres.split("|")
+        # Only use the first genre
+        genre = genres[0]
 
         return {
             "user_id": torch.tensor([self.user_to_idx[user_id]], dtype=torch.long),
             "movie_id": torch.tensor([self.movie_to_idx[movie_id]], dtype=torch.long),
             "rating": torch.tensor([rating], dtype=torch.float),
-            "movie_title": movie_title,
-            "movie_genres": movie_genres,
+            "genre_id": torch.tensor([self.genre_to_idx[genre]], dtype=torch.long),
+            "year_id": torch.tensor([self.year_to_idx[year]], dtype=torch.long),
         }
 
 
-# Matrix Factorization model
-class Factorization(nn.Module):
-    def __init__(self, user_vocab_size, movie_vocab_size, embedding_dim):
-        super(Factorization, self).__init__()
-        self.user_embeds = nn.Embedding(user_vocab_size, embedding_dim)
-        self.movie_embeds = nn.Embedding(movie_vocab_size, embedding_dim)
-
-    def forward(self, user_idx, movie_idx):
-        user = self.user_embeds(user_idx)
-        movie = self.movie_embeds(movie_idx)
-        similarity = F.cosine_similarity(user, movie)
-
-        # User ratings can vary from 0.5 to 5.0 in increments of 0.5:
-        # 0.5, 1.0, 1.5, ..., 4.5, 5.0
-        # Adjust the similarity to map the output to 0.25 to 5.25.
-        # This way, predicted values:
-        # - between 0.25 and 0.75 can be counted towards 0.5 rating.
-        # - between 0.75 and 1.25 can be counted towards 1.0 rating.
-        # And so on.
-        # Cosine similarity can be between -1 and 1.
-        similarity = similarity * 2.5 + 2.75
-        return similarity
-
-
 # Matrix Factorization model with user & item biases
-class FactorizationBias(nn.Module):
-    def __init__(self, user_vocab_size, movie_vocab_size, embedding_dim):
-        super(FactorizationBias, self).__init__()
-        self.user_embeds = nn.Embedding(user_vocab_size, embedding_dim)
-        self.movie_embeds = nn.Embedding(movie_vocab_size, embedding_dim)
-        self.user_biases = nn.Embedding(user_vocab_size, 1)
-        self.movie_biases = nn.Embedding(movie_vocab_size, 1)
+class MFSideFeaturesBias(nn.Module):
+    def __init__(self, num_users, num_movies, num_genres, num_years, embedding_dim):
+        super(MFSideFeaturesBias, self).__init__()
+        self.user_embeds = nn.Embedding(num_users, embedding_dim)
+        self.movie_embeds = nn.Embedding(num_movies, embedding_dim)
+        self.user_biases = nn.Embedding(num_users, 1)
+        self.movie_biases = nn.Embedding(num_movies, 1)
+        self.genre_embeds = nn.Embedding(num_genres, embedding_dim)
+        self.year_embeds = nn.Embedding(num_years, embedding_dim)
 
-    def forward(self, user_idx, movie_idx):
+    def forward(self, user_idx, movie_idx, genre_idx, year_idx):
         user = self.user_embeds(user_idx)
         movie = self.movie_embeds(movie_idx)
         similarity = F.cosine_similarity(user, movie)
@@ -125,9 +140,18 @@ class FactorizationBias(nn.Module):
         # Cosine similarity can be between -1 and 1.
         similarity = similarity * 2.5 + 2.75
 
-        movie_bias = self.movie_biases(movie_idx)
-        user_bias = self.user_biases(user_idx)
-        prediction = similarity + user_bias.squeeze() + movie_bias.squeeze()
+        movie_bias = self.movie_biases(movie_idx).squeeze()
+        user_bias = self.user_biases(user_idx).squeeze()
+        genre = self.genre_embeds(genre_idx)
+        year = self.year_embeds(year_idx)
+
+        prediction = (
+            similarity
+            + user_bias
+            + movie_bias
+            + F.cosine_similarity(user, genre)
+            + F.cosine_similarity(user, year)
+        )
         return prediction
 
 
@@ -171,31 +195,31 @@ def main(argv):
     print("L2 regularization factor:", FLAGS.l2_regularization_factor)
 
     # Load data
-    movies_df, ratings_train_df, ratings_test_df, movie_to_idx, user_to_idx = load_data(
-        FLAGS.data_dir
-    )
+    data = load_data(FLAGS.data_dir)
+    movies, train_df, test_df, movie_map, user_map, genre_map, year_map = data
 
     # Dataloader
     train_dataset = MovieLensDataset(
-        movies_df, ratings_train_df, movie_to_idx, user_to_idx
+        movies, train_df, movie_map, user_map, genre_map, year_map
     )
     train_dataloader = DataLoader(
         train_dataset, batch_size=FLAGS.batch_size, shuffle=True, num_workers=0
     )
 
     test_dataset = MovieLensDataset(
-        movies_df, ratings_test_df, movie_to_idx, user_to_idx
+        movies, test_df, movie_map, user_map, genre_map, year_map
     )
     test_dataloader = DataLoader(
         test_dataset, batch_size=FLAGS.batch_size, shuffle=True, num_workers=0
     )
 
-    if FLAGS.learn_biases is False:
-        model = Factorization(len(user_to_idx), len(movie_to_idx), FLAGS.embedding_dim)
-    else:
-        model = FactorizationBias(
-            len(user_to_idx), len(movie_to_idx), FLAGS.embedding_dim
-        )
+    model = MFSideFeaturesBias(
+        len(user_map),
+        len(movie_map),
+        len(genre_map),
+        len(year_map),
+        FLAGS.embedding_dim,
+    )
     print(model)
     model = model.to(device)
     loss_fn = nn.MSELoss()
@@ -221,8 +245,10 @@ def main(argv):
         for i, data in enumerate(tqdm(train_dataloader)):
             user_idx = torch.squeeze(data["user_id"]).to(device)
             movie_idx = torch.squeeze(data["movie_id"]).to(device)
+            genre_idx = torch.squeeze(data["genre_id"]).to(device)
+            year_idx = torch.squeeze(data["year_id"]).to(device)
             labels = torch.squeeze(data["rating"]).to(device)
-            logits = model(user_idx, movie_idx)
+            logits = model(user_idx, movie_idx, genre_idx, year_idx)
             loss = loss_fn(logits, labels)
             optimizer.zero_grad()
             loss.backward()
@@ -241,8 +267,10 @@ def main(argv):
         for i, data in enumerate(tqdm(test_dataloader)):
             user_idx = torch.squeeze(data["user_id"]).to(device)
             movie_idx = torch.squeeze(data["movie_id"]).to(device)
+            genre_idx = torch.squeeze(data["genre_id"]).to(device)
+            year_idx = torch.squeeze(data["year_id"]).to(device)
             labels = torch.squeeze(data["rating"]).to(device)
-            logits = model(user_idx, movie_idx)
+            logits = model(user_idx, movie_idx, genre_idx, year_idx)
 
             test_corrects += get_correct_predictions(logits, labels)
             test_count += logits.shape[0]
