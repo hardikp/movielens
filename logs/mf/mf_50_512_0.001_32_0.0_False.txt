@@ -1,0 +1,54 @@
+Epoch: 0 | Loss: 1.7422 | Train Accuracy: 13.10 | Test Accuracy: 18.61
+Epoch: 1 | Loss: 0.8931 | Train Accuracy: 23.15 | Test Accuracy: 24.88
+Epoch: 2 | Loss: 0.7246 | Train Accuracy: 26.47 | Test Accuracy: 26.24
+Epoch: 3 | Loss: 0.6692 | Train Accuracy: 27.74 | Test Accuracy: 26.87
+Epoch: 4 | Loss: 0.6339 | Train Accuracy: 28.57 | Test Accuracy: 27.27
+Epoch: 5 | Loss: 0.6085 | Train Accuracy: 29.24 | Test Accuracy: 27.52
+Epoch: 6 | Loss: 0.5897 | Train Accuracy: 29.76 | Test Accuracy: 27.69
+Epoch: 7 | Loss: 0.5754 | Train Accuracy: 30.21 | Test Accuracy: 27.85
+Epoch: 8 | Loss: 0.5643 | Train Accuracy: 30.58 | Test Accuracy: 27.94
+Epoch: 9 | Loss: 0.5555 | Train Accuracy: 30.89 | Test Accuracy: 28.03
+Epoch: 10 | Loss: 0.5483 | Train Accuracy: 31.15 | Test Accuracy: 28.08
+Epoch: 11 | Loss: 0.5424 | Train Accuracy: 31.40 | Test Accuracy: 28.15
+Epoch: 12 | Loss: 0.5375 | Train Accuracy: 31.60 | Test Accuracy: 28.21
+Epoch: 13 | Loss: 0.5333 | Train Accuracy: 31.77 | Test Accuracy: 28.23
+Epoch: 14 | Loss: 0.5299 | Train Accuracy: 31.93 | Test Accuracy: 28.26
+Epoch: 15 | Loss: 0.5268 | Train Accuracy: 32.07 | Test Accuracy: 28.30
+Epoch: 16 | Loss: 0.5243 | Train Accuracy: 32.19 | Test Accuracy: 28.33
+Epoch: 17 | Loss: 0.5220 | Train Accuracy: 32.30 | Test Accuracy: 28.37
+Epoch: 18 | Loss: 0.5201 | Train Accuracy: 32.39 | Test Accuracy: 28.38
+Epoch: 19 | Loss: 0.5184 | Train Accuracy: 32.48 | Test Accuracy: 28.37
+Epoch: 20 | Loss: 0.5168 | Train Accuracy: 32.55 | Test Accuracy: 28.40
+Epoch: 21 | Loss: 0.5155 | Train Accuracy: 32.62 | Test Accuracy: 28.41
+Epoch: 22 | Loss: 0.5143 | Train Accuracy: 32.69 | Test Accuracy: 28.41
+Epoch: 23 | Loss: 0.5132 | Train Accuracy: 32.74 | Test Accuracy: 28.42
+Epoch: 24 | Loss: 0.5122 | Train Accuracy: 32.79 | Test Accuracy: 28.44
+Epoch: 25 | Loss: 0.5114 | Train Accuracy: 32.85 | Test Accuracy: 28.46
+Epoch: 26 | Loss: 0.5105 | Train Accuracy: 32.89 | Test Accuracy: 28.46
+Epoch: 27 | Loss: 0.5098 | Train Accuracy: 32.93 | Test Accuracy: 28.46
+Epoch: 28 | Loss: 0.5091 | Train Accuracy: 32.96 | Test Accuracy: 28.48
+Epoch: 29 | Loss: 0.5085 | Train Accuracy: 33.00 | Test Accuracy: 28.50
+Epoch: 30 | Loss: 0.5079 | Train Accuracy: 33.03 | Test Accuracy: 28.49
+Epoch: 31 | Loss: 0.5074 | Train Accuracy: 33.07 | Test Accuracy: 28.49
+Epoch: 32 | Loss: 0.5069 | Train Accuracy: 33.09 | Test Accuracy: 28.50
+Epoch: 33 | Loss: 0.5064 | Train Accuracy: 33.12 | Test Accuracy: 28.51
+Epoch: 34 | Loss: 0.5060 | Train Accuracy: 33.14 | Test Accuracy: 28.50
+Epoch: 35 | Loss: 0.5056 | Train Accuracy: 33.16 | Test Accuracy: 28.50
+Epoch: 36 | Loss: 0.5052 | Train Accuracy: 33.18 | Test Accuracy: 28.52
+Epoch: 37 | Loss: 0.5048 | Train Accuracy: 33.21 | Test Accuracy: 28.52
+Epoch: 38 | Loss: 0.5045 | Train Accuracy: 33.23 | Test Accuracy: 28.51
+Epoch: 39 | Loss: 0.5042 | Train Accuracy: 33.24 | Test Accuracy: 28.53
+Epoch: 40 | Loss: 0.5039 | Train Accuracy: 33.26 | Test Accuracy: 28.54
+Epoch: 41 | Loss: 0.5036 | Train Accuracy: 33.28 | Test Accuracy: 28.52
+Epoch: 42 | Loss: 0.5033 | Train Accuracy: 33.29 | Test Accuracy: 28.55
+Epoch: 43 | Loss: 0.5031 | Train Accuracy: 33.30 | Test Accuracy: 28.54
+Epoch: 44 | Loss: 0.5028 | Train Accuracy: 33.32 | Test Accuracy: 28.55
+Epoch: 45 | Loss: 0.5026 | Train Accuracy: 33.33 | Test Accuracy: 28.55
+Epoch: 46 | Loss: 0.5023 | Train Accuracy: 33.34 | Test Accuracy: 28.55
+Epoch: 47 | Loss: 0.5021 | Train Accuracy: 33.36 | Test Accuracy: 28.55
+Epoch: 48 | Loss: 0.5019 | Train Accuracy: 33.36 | Test Accuracy: 28.56
+Epoch: 49 | Loss: 0.5017 | Train Accuracy: 33.38 | Test Accuracy: 28.57
+# time python3 mf.py --num_epochs=50 --batch_size=512 --learning_rate=1e-3 --embedding_dim=32  --l2_regularization_factor=0 --learn_biases=False
+# real	1719m17.968s
+# user	1715m35.821s
+# sys	2m27.987s

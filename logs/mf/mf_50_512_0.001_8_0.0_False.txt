@@ -1,0 +1,66 @@
+Epoch: 0 | Loss: 2.3342 | Train Accuracy: 12.11 | Test Accuracy: 15.85
+Epoch: 1 | Loss: 1.1372 | Train Accuracy: 21.05 | Test Accuracy: 23.64
+Epoch: 2 | Loss: 0.8322 | Train Accuracy: 25.20 | Test Accuracy: 25.74
+Epoch: 3 | Loss: 0.7494 | Train Accuracy: 26.64 | Test Accuracy: 26.54
+Epoch: 4 | Loss: 0.7176 | Train Accuracy: 27.30 | Test Accuracy: 26.90
+Epoch: 5 | Loss: 0.7009 | Train Accuracy: 27.66 | Test Accuracy: 27.10
+Epoch: 6 | Loss: 0.6890 | Train Accuracy: 27.93 | Test Accuracy: 27.28
+Epoch: 7 | Loss: 0.6790 | Train Accuracy: 28.16 | Test Accuracy: 27.43
+Epoch: 8 | Loss: 0.6701 | Train Accuracy: 28.35 | Test Accuracy: 27.54
+Epoch: 9 | Loss: 0.6623 | Train Accuracy: 28.54 | Test Accuracy: 27.63
+Epoch: 10 | Loss: 0.6557 | Train Accuracy: 28.70 | Test Accuracy: 27.70
+Epoch: 11 | Loss: 0.6501 | Train Accuracy: 28.83 | Test Accuracy: 27.79
+Epoch: 12 | Loss: 0.6452 | Train Accuracy: 28.95 | Test Accuracy: 27.84
+Epoch: 13 | Loss: 0.6411 | Train Accuracy: 29.05 | Test Accuracy: 27.89
+Epoch: 14 | Loss: 0.6373 | Train Accuracy: 29.14 | Test Accuracy: 27.92
+Epoch: 15 | Loss: 0.6340 | Train Accuracy: 29.22 | Test Accuracy: 27.95
+Epoch: 16 | Loss: 0.6309 | Train Accuracy: 29.30 | Test Accuracy: 27.99
+Epoch: 17 | Loss: 0.6281 | Train Accuracy: 29.37 | Test Accuracy: 28.02
+Epoch: 18 | Loss: 0.6253 | Train Accuracy: 29.45 | Test Accuracy: 28.03
+Epoch: 19 | Loss: 0.6228 | Train Accuracy: 29.50 | Test Accuracy: 28.05
+Epoch: 20 | Loss: 0.6204 | Train Accuracy: 29.56 | Test Accuracy: 28.09
+Epoch: 21 | Loss: 0.6182 | Train Accuracy: 29.61 | Test Accuracy: 28.10
+Epoch: 22 | Loss: 0.6161 | Train Accuracy: 29.68 | Test Accuracy: 28.13
+Epoch: 23 | Loss: 0.6141 | Train Accuracy: 29.72 | Test Accuracy: 28.13
+Epoch: 24 | Loss: 0.6122 | Train Accuracy: 29.76 | Test Accuracy: 28.14
+Epoch: 25 | Loss: 0.6105 | Train Accuracy: 29.81 | Test Accuracy: 28.17
+Epoch: 26 | Loss: 0.6089 | Train Accuracy: 29.85 | Test Accuracy: 28.17
+Epoch: 27 | Loss: 0.6074 | Train Accuracy: 29.88 | Test Accuracy: 28.19
+Epoch: 28 | Loss: 0.6060 | Train Accuracy: 29.92 | Test Accuracy: 28.19
+Epoch: 29 | Loss: 0.6047 | Train Accuracy: 29.95 | Test Accuracy: 28.20
+Epoch: 30 | Loss: 0.6035 | Train Accuracy: 29.99 | Test Accuracy: 28.20
+Epoch: 31 | Loss: 0.6024 | Train Accuracy: 30.01 | Test Accuracy: 28.22
+Epoch: 32 | Loss: 0.6013 | Train Accuracy: 30.03 | Test Accuracy: 28.20
+Epoch: 33 | Loss: 0.6003 | Train Accuracy: 30.05 | Test Accuracy: 28.24
+Epoch: 34 | Loss: 0.5994 | Train Accuracy: 30.08 | Test Accuracy: 28.21
+Epoch: 35 | Loss: 0.5985 | Train Accuracy: 30.10 | Test Accuracy: 28.22
+Epoch: 36 | Loss: 0.5977 | Train Accuracy: 30.13 | Test Accuracy: 28.24
+Epoch: 37 | Loss: 0.5969 | Train Accuracy: 30.15 | Test Accuracy: 28.25
+Epoch: 38 | Loss: 0.5962 | Train Accuracy: 30.15 | Test Accuracy: 28.23
+Epoch: 39 | Loss: 0.5954 | Train Accuracy: 30.17 | Test Accuracy: 28.23
+Epoch: 40 | Loss: 0.5948 | Train Accuracy: 30.19 | Test Accuracy: 28.26
+Epoch: 41 | Loss: 0.5941 | Train Accuracy: 30.21 | Test Accuracy: 28.25
+Epoch: 42 | Loss: 0.5935 | Train Accuracy: 30.23 | Test Accuracy: 28.25
+Epoch: 43 | Loss: 0.5929 | Train Accuracy: 30.23 | Test Accuracy: 28.25
+Epoch: 44 | Loss: 0.5923 | Train Accuracy: 30.25 | Test Accuracy: 28.25
+Epoch: 45 | Loss: 0.5918 | Train Accuracy: 30.26 | Test Accuracy: 28.25
+Epoch: 46 | Loss: 0.5913 | Train Accuracy: 30.28 | Test Accuracy: 28.25
+Epoch: 47 | Loss: 0.5908 | Train Accuracy: 30.29 | Test Accuracy: 28.28
+Epoch: 48 | Loss: 0.5904 | Train Accuracy: 30.30 | Test Accuracy: 28.26
+Epoch: 49 | Loss: 0.5899 | Train Accuracy: 30.31 | Test Accuracy: 28.27
+# time python3 mf.py --num_epochs=50 --batch_size=512 --learning_rate=1e-3 --embedding_dim=8   --l2_regularization_factor=0 --learn_biases=False
+# Batch size: 512
+# Embedding size: 8
+# Learning rate: 0.001
+# Num epochs: 50
+# L2 regularization factor: 0.0
+# num_users: 162541
+# num_movies: 62423
+# num_ratings: 25000095
+# Factorization(
+#   (user_embeds): Embedding(162541, 8)
+#   (movie_embeds): Embedding(62423, 8)
+# )
+# real	1730m22.778s
+# user	1726m42.953s
+# sys	2m29.282s
