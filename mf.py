@@ -1,6 +1,7 @@
 from builtins import enumerate, len, open, print, range, super
 import datetime
 import os
+import sys
 
 import pandas as pd
 import torch
@@ -163,12 +164,22 @@ def write_training_log(
     f.close()
 
 
+def get_file_name():
+    prefix = sys.argv[0].split(".")[0]
+    filename = f"{prefix}_{FLAGS.num_epochs}_{FLAGS.batch_size}"
+    filename += f"_{FLAGS.learning_rate}_{FLAGS.embedding_dim}"
+    filename += f"_{FLAGS.l2_regularization_factor}_{FLAGS.learn_biases}"
+    filename += f'_{datetime.datetime.now().strftime("%m%d%H%M%S")}.txt'
+    return filename
+
+
 def main(argv):
     print("Batch size:", FLAGS.batch_size)
     print("Embedding size:", FLAGS.embedding_dim)
     print("Learning rate:", FLAGS.learning_rate)
     print("Num epochs:", FLAGS.num_epochs)
     print("L2 regularization factor:", FLAGS.l2_regularization_factor)
+    print("Learn biases:", FLAGS.learn_biases)
 
     # Load data
     movies_df, ratings_train_df, ratings_test_df, movie_to_idx, user_to_idx = load_data(
@@ -205,9 +216,7 @@ def main(argv):
         weight_decay=FLAGS.l2_regularization_factor,
     )
     training_log = []
-    training_log_filepath = "training_log_{}.txt".format(
-        datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    )
+    training_log_filepath = get_file_name()
 
     # Train + Eval
     for epoch in range(FLAGS.num_epochs):

@@ -1,6 +1,7 @@
 from builtins import enumerate, int, len, open, print, range, super
 import datetime
 import os
+import sys
 
 import pandas as pd
 import torch
@@ -187,6 +188,15 @@ def write_training_log(
     f.close()
 
 
+def get_file_name():
+    prefix = sys.argv[0].split(".")[0]
+    filename = f"{prefix}_{FLAGS.num_epochs}_{FLAGS.batch_size}"
+    filename += f"_{FLAGS.learning_rate}_{FLAGS.embedding_dim}"
+    filename += f"_{FLAGS.l2_regularization_factor}"
+    filename += f'_{datetime.datetime.now().strftime("%m%d%H%M%S")}.txt'
+    return filename
+
+
 def main(argv):
     print("Batch size:", FLAGS.batch_size)
     print("Embedding size:", FLAGS.embedding_dim)
@@ -229,9 +239,7 @@ def main(argv):
         weight_decay=FLAGS.l2_regularization_factor,
     )
     training_log = []
-    training_log_filepath = "training_log_{}.txt".format(
-        datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    )
+    training_log_filepath = get_file_name()
 
     # Train + Eval
     for epoch in range(FLAGS.num_epochs):

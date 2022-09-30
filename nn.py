@@ -1,5 +1,6 @@
 import datetime
 import os
+import sys
 
 import pandas as pd
 import torch
@@ -19,6 +20,7 @@ flags.DEFINE_integer("embedding_dim", 16, "Embedding dimension")
 flags.DEFINE_integer("num_epochs", 5, "Num epochs")
 flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
+flags.DEFINE_float("l2_regularization_factor", 0.0, "L2 regularization factor")
 flags.DEFINE_float("dropout", 0.25, "Dropout")
 flags.DEFINE_boolean("apply_emb_dropout", True, "Apply Dropout to Embeddings")
 flags.DEFINE_integer("l_size_user", 16, "user_id linear layer size")
@@ -257,11 +259,23 @@ def write_training_log(
     f.close()
 
 
+def get_file_name():
+    prefix = sys.argv[0].split(".")[0]
+    filename = f"{prefix}_{FLAGS.num_epochs}_{FLAGS.batch_size}"
+    filename += f"_{FLAGS.learning_rate}_{FLAGS.embedding_dim}"
+    filename += f"_{FLAGS.l2_regularization_factor}_{FLAGS.dropout}"
+    filename += f"_{FLAGS.l_size_user}_{FLAGS.l_size_movie}"
+    filename += f"_{FLAGS.l_size_genre}_{FLAGS.l_size_year}"
+    filename += f'_{datetime.datetime.now().strftime("%m%d%H%M%S")}.txt'
+    return filename
+
+
 def main(argv):
     print("Batch size:", FLAGS.batch_size)
     print("Embedding size:", FLAGS.embedding_dim)
     print("Learning rate:", FLAGS.learning_rate)
     print("Num epochs:", FLAGS.num_epochs)
+    print("L2 regularization factor:", FLAGS.l2_regularization_factor)
     print("Dropout:", FLAGS.dropout)
     print("l_size_user:", FLAGS.l_size_user)
     print("l_size_movie:", FLAGS.l_size_movie)
@@ -318,11 +332,13 @@ def main(argv):
     model = model.to(device)
     print(model)
     loss_fn = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=FLAGS.learning_rate)
-    training_log = []
-    training_log_filepath = "training_log_{}.txt".format(
-        datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=FLAGS.learning_rate,
+        weight_decay=FLAGS.l2_regularization_factor,
     )
+    training_log = []
+    training_log_filepath = get_file_name()
 
     # Train + Eval
     for epoch in range(FLAGS.num_epochs):
