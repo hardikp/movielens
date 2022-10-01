@@ -1,4 +1,6 @@
 from builtins import enumerate, len, open, print, range, super
+from dataclasses import dataclass
+from typing import Mapping
 import datetime
 import os
 import sys
@@ -25,13 +27,30 @@ flags.DEFINE_float("l2_regularization_factor", 0.0, "L2 regularization factor")
 flags.DEFINE_boolean("learn_biases", False, "Learn user and movie biases")
 
 
+@dataclass
+class Data:
+    """Class for storing various data objects"""
+
+    ratings_train_df: pd.DataFrame
+    ratings_test_df: pd.DataFrame
+    movies_df: pd.DataFrame
+    movie_map: Mapping[int, int]
+    user_map: Mapping[int, int]
+
+    def num_users(self) -> int:
+        return len(self.user_map)
+
+    def num_movies(self) -> int:
+        return len(self.movie_map)
+
+
 def load_data(data_dir):
     movies_df = pd.read_csv(os.path.join(data_dir, "movies.csv"))
     ratings_df = pd.read_csv(os.path.join(data_dir, "ratings.csv"))
-    movie_to_idx = {m: i for i, m in enumerate(movies_df["movieId"].unique())}
-    user_to_idx = {u: i for i, u in enumerate(ratings_df["userId"].unique())}
-    num_users = len(user_to_idx)
-    num_movies = len(movie_to_idx)
+    movie_map = {m: i for i, m in enumerate(movies_df["movieId"].unique())}
+    user_map = {u: i for i, u in enumerate(ratings_df["userId"].unique())}
+    num_users = len(user_map)
+    num_movies = len(movie_map)
     print("num_users:", num_users)
     print("num_movies:", num_movies)
     print("num_ratings:", ratings_df.shape[0])
@@ -46,16 +65,17 @@ def load_data(data_dir):
         ["userId", "movieId", "rating", "timestamp"]
     ]
 
-    return movies_df, ratings_train_df, ratings_test_df, movie_to_idx, user_to_idx
+    data = Data(ratings_train_df, ratings_test_df, movies_df, movie_map, user_map)
+    return data
 
 
 class MovieLensDataset(Dataset):
-    def __init__(self, movies_df, ratings_df, movie_to_idx, user_to_idx):
-        self.movie_title = movies_df.set_index("movieId")["title"].T.to_dict()
-        self.movie_genres = movies_df.set_index("movieId")["genres"].T.to_dict()
+    def __init__(self, data, ratings_df):
+        self.movie_title = data.movies_df.set_index("movieId")["title"].T.to_dict()
+        self.movie_genres = data.movies_df.set_index("movieId")["genres"].T.to_dict()
         self.ratings_df = ratings_df
-        self.movie_to_idx = movie_to_idx
-        self.user_to_idx = user_to_idx
+        self.movie_map = data.movie_map
+        self.user_map = data.user_map
 
     def __len__(self):
         return len(self.ratings_df)
@@ -71,8 +91,8 @@ class MovieLensDataset(Dataset):
         movie_genres = self.movie_genres[movie_id]
 
         return {
-            "user_id": torch.tensor([self.user_to_idx[user_id]], dtype=torch.long),
-            "movie_id": torch.tensor([self.movie_to_idx[movie_id]], dtype=torch.long),
+            "user_id": torch.tensor([self.user_map[user_id]], dtype=torch.long),
+            "movie_id": torch.tensor([self.movie_map[movie_id]], dtype=torch.long),
             "rating": torch.tensor([rating], dtype=torch.float),
             "movie_title": movie_title,
             "movie_genres": movie_genres,
@@ -81,10 +101,10 @@ class MovieLensDataset(Dataset):
 
 # Matrix Factorization model
 class Factorization(nn.Module):
-    def __init__(self, user_vocab_size, movie_vocab_size, embedding_dim):
+    def __init__(self, num_users, num_movies):
         super(Factorization, self).__init__()
-        self.user_embeds = nn.Embedding(user_vocab_size, embedding_dim)
-        self.movie_embeds = nn.Embedding(movie_vocab_size, embedding_dim)
+        self.user_embeds = nn.Embedding(num_users, FLAGS.embedding_dim)
+        self.movie_embeds = nn.Embedding(num_movies, FLAGS.embedding_dim)
 
     def forward(self, user_idx, movie_idx):
         user = self.user_embeds(user_idx)
@@ -105,12 +125,12 @@ class Factorization(nn.Module):
 
 # Matrix Factorization model with user & item biases
 class FactorizationBias(nn.Module):
-    def __init__(self, user_vocab_size, movie_vocab_size, embedding_dim):
+    def __init__(self, num_users, num_movies):
         super(FactorizationBias, self).__init__()
-        self.user_embeds = nn.Embedding(user_vocab_size, embedding_dim)
-        self.movie_embeds = nn.Embedding(movie_vocab_size, embedding_dim)
-        self.user_biases = nn.Embedding(user_vocab_size, 1)
-        self.movie_biases = nn.Embedding(movie_vocab_size, 1)
+        self.user_embeds = nn.Embedding(num_users, FLAGS.embedding_dim)
+        self.movie_embeds = nn.Embedding(num_movies, FLAGS.embedding_dim)
+        self.user_biases = nn.Embedding(num_users, 1)
+        self.movie_biases = nn.Embedding(num_movies, 1)
 
     def forward(self, user_idx, movie_idx):
         user = self.user_embeds(user_idx)
@@ -139,38 +159,75 @@ def get_correct_predictions(logit, target):
     return corrects
 
 
-def get_epoch_summary(epoch, train_running_loss, train_acc, test_acc):
+@dataclass
+class LogData:
+    """Dataclass holding training epoch log data"""
+
+    epoch: int
+    train_loss: float
+    train_acc: float
+    test_acc: float
+
+
+def get_epoch_summary(log_data: LogData):
     return "Epoch: %d | Loss: %.4f | Train Accuracy: %.2f | Test Accuracy: %.2f" % (
-        epoch,
-        train_running_loss,
-        train_acc,
-        test_acc,
+        log_data.epoch,
+        log_data.train_loss,
+        log_data.train_acc,
+        log_data.test_acc,
     )
 
 
-def write_training_log(
-    training_log, training_log_filepath, epoch, train_running_loss, train_acc, test_acc
-):
-    epoch_summary = get_epoch_summary(epoch, train_running_loss, train_acc, test_acc)
-    print(epoch_summary)
+def load_model(model):
+    log_path, model_path = get_path()
+    if not os.path.exists(log_path):
+        print(f"{log_path} doesn't exist. Not loading model.")
+        return None
+    if not os.path.exists(model_path):
+        print(f"{model_path} doesn't exist. Not loading model.")
+        return None
 
-    training_log.append((epoch, train_running_loss, train_acc, test_acc))
-    f = open(training_log_filepath, "w")
-    s = ""
-    for (epoch, train_running_loss, train_acc, test_acc) in training_log:
-        s += get_epoch_summary(epoch, train_running_loss, train_acc, test_acc)
-        s += "\n"
-    f.write(s)
-    f.close()
+    # Load model parameters
+    print(f"Loading model from {model_path}")
+    model.load_state_dict(torch.load(model_path))
+
+    # Load max epoch
+    lines = open(log_path).read().strip().split("\n")
+    lines = [l for l in lines if not l.startswith("#")]
+    last_line = lines[-1]
+    max_epoch = int(last_line.split(" | ")[0].split(": ")[1])
+    return model, max_epoch + 1
 
 
-def get_file_name():
+def get_path():
     prefix = sys.argv[0].split(".")[0]
     filename = f"{prefix}_{FLAGS.num_epochs}_{FLAGS.batch_size}"
     filename += f"_{FLAGS.learning_rate}_{FLAGS.embedding_dim}"
     filename += f"_{FLAGS.l2_regularization_factor}_{FLAGS.learn_biases}"
-    filename += f'_{datetime.datetime.now().strftime("%m%d%H%M%S")}.txt'
-    return filename
+    return filename + ".txt", filename + ".model"
+
+
+def checkpoint(epoch_data, model):
+    log_path, model_path = get_path()
+
+    # Read existing logs
+    lines = []
+    if os.path.exists(log_path):
+        lines = open(log_path).read().strip().split("\n")
+        lines = [l for l in lines if not l.startswith("#")]
+    print(get_epoch_summary(epoch_data))
+    lines.append(get_epoch_summary(epoch_data))
+
+    # Write the model
+    torch.save(model.state_dict(), model_path)
+
+    # Write log file
+    f = open(log_path, "w")
+    s = ""
+    for line in lines:
+        s += line + "\n"
+    f.write(s)
+    f.close()
 
 
 def main(argv):
@@ -182,32 +239,32 @@ def main(argv):
     print("Learn biases:", FLAGS.learn_biases)
 
     # Load data
-    movies_df, ratings_train_df, ratings_test_df, movie_to_idx, user_to_idx = load_data(
-        FLAGS.data_dir
-    )
+    data = load_data(FLAGS.data_dir)
 
     # Dataloader
-    train_dataset = MovieLensDataset(
-        movies_df, ratings_train_df, movie_to_idx, user_to_idx
-    )
+    train_dataset = MovieLensDataset(data, data.ratings_train_df)
     train_dataloader = DataLoader(
         train_dataset, batch_size=FLAGS.batch_size, shuffle=True, num_workers=0
     )
 
-    test_dataset = MovieLensDataset(
-        movies_df, ratings_test_df, movie_to_idx, user_to_idx
-    )
+    test_dataset = MovieLensDataset(data, data.ratings_test_df)
     test_dataloader = DataLoader(
         test_dataset, batch_size=FLAGS.batch_size, shuffle=True, num_workers=0
     )
 
     if FLAGS.learn_biases is False:
-        model = Factorization(len(user_to_idx), len(movie_to_idx), FLAGS.embedding_dim)
+        model = Factorization(data.num_users(), data.num_movies())
     else:
-        model = FactorizationBias(
-            len(user_to_idx), len(movie_to_idx), FLAGS.embedding_dim
-        )
+        model = FactorizationBias(data.num_users(), data.num_movies())
     print(model)
+
+    # Load model from the checkpoint if it exists
+    out = load_model(model)
+    if out is not None:
+        (model, start_epoch) = out
+    else:
+        start_epoch = 0
+
     model = model.to(device)
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(
@@ -215,12 +272,9 @@ def main(argv):
         lr=FLAGS.learning_rate,
         weight_decay=FLAGS.l2_regularization_factor,
     )
-    training_log = []
-    training_log_filepath = get_file_name()
-    print(f"Logs will be written to: {training_log_filepath}")
 
     # Train + Eval
-    for epoch in range(FLAGS.num_epochs):
+    for epoch in range(start_epoch, FLAGS.num_epochs):
         train_running_loss = 0.0
         train_corrects = 0.0
         train_count = 0
@@ -260,14 +314,11 @@ def main(argv):
             if FLAGS.debug and i == 2:
                 break
 
-        write_training_log(
-            training_log,
-            training_log_filepath,
-            epoch,
-            train_running_loss / train_count * FLAGS.batch_size,
-            train_corrects / train_count * 100.0,
-            test_corrects / test_count * 100.0,
-        )
+        train_loss = train_running_loss / train_count * FLAGS.batch_size
+        train_acc = train_corrects / train_count * 100.0
+        test_acc = test_corrects / test_count * 100.0
+        epoch_data = LogData(epoch, train_loss, train_acc, test_acc)
+        checkpoint(epoch_data, model)
 
 
 if __name__ == "__main__":
