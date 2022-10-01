@@ -217,6 +217,7 @@ def main(argv):
     )
     training_log = []
     training_log_filepath = get_file_name()
+    print(f"Logs will be written to: {training_log_filepath}")
 
     # Train + Eval
     for epoch in range(FLAGS.num_epochs):

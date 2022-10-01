@@ -49,18 +49,6 @@ Epoch: 47 | Loss: 0.5908 | Train Accuracy: 30.29 | Test Accuracy: 28.28
 Epoch: 48 | Loss: 0.5904 | Train Accuracy: 30.30 | Test Accuracy: 28.26
 Epoch: 49 | Loss: 0.5899 | Train Accuracy: 30.31 | Test Accuracy: 28.27
 # time python3 mf.py --num_epochs=50 --batch_size=512 --learning_rate=1e-3 --embedding_dim=8   --l2_regularization_factor=0 --learn_biases=False
-# Batch size: 512
-# Embedding size: 8
-# Learning rate: 0.001
-# Num epochs: 50
-# L2 regularization factor: 0.0
-# num_users: 162541
-# num_movies: 62423
-# num_ratings: 25000095
-# Factorization(
-#   (user_embeds): Embedding(162541, 8)
-#   (movie_embeds): Embedding(62423, 8)
-# )
 # real	1730m22.778s
 # user	1726m42.953s
 # sys	2m29.282s
