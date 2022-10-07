@@ -31,8 +31,8 @@ flags.DEFINE_boolean("learn_biases", False, "Learn user and movie biases")
 class Data:
     """Class for storing various data objects"""
 
-    ratings_train_df: pd.DataFrame
-    ratings_test_df: pd.DataFrame
+    train_df: pd.DataFrame
+    test_df: pd.DataFrame
     movies_df: pd.DataFrame
     movie_map: Mapping[int, int]
     user_map: Mapping[int, int]
@@ -55,17 +55,11 @@ def load_data(data_dir):
     print("num_movies:", num_movies)
     print("num_ratings:", ratings_df.shape[0])
 
-    ratings_train_df, ratings_test_df = train_test_split(
-        ratings_df, test_size=0.1, random_state=42
-    )
-    ratings_train_df = ratings_train_df.reset_index()[
-        ["userId", "movieId", "rating", "timestamp"]
-    ]
-    ratings_test_df = ratings_test_df.reset_index()[
-        ["userId", "movieId", "rating", "timestamp"]
-    ]
+    train_df, test_df = train_test_split(ratings_df, test_size=0.1, random_state=42)
+    train_df = train_df.reset_index()[["userId", "movieId", "rating", "timestamp"]]
+    test_df = test_df.reset_index()[["userId", "movieId", "rating", "timestamp"]]
 
-    data = Data(ratings_train_df, ratings_test_df, movies_df, movie_map, user_map)
+    data = Data(train_df, test_df, movies_df, movie_map, user_map)
     return data
 
 
@@ -242,12 +236,12 @@ def main(argv):
     data = load_data(FLAGS.data_dir)
 
     # Dataloader
-    train_dataset = MovieLensDataset(data, data.ratings_train_df)
+    train_dataset = MovieLensDataset(data, data.train_df)
     train_dataloader = DataLoader(
         train_dataset, batch_size=FLAGS.batch_size, shuffle=True, num_workers=0
     )
 
-    test_dataset = MovieLensDataset(data, data.ratings_test_df)
+    test_dataset = MovieLensDataset(data, data.test_df)
     test_dataloader = DataLoader(
         test_dataset, batch_size=FLAGS.batch_size, shuffle=True, num_workers=0
     )

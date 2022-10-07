@@ -1,4 +1,6 @@
 from builtins import enumerate, int, len, open, print, range, super
+from dataclasses import dataclass
+from typing import Mapping
 import datetime
 import os
 import sys
@@ -31,64 +33,68 @@ def get_year(title):
         return 0
 
 
+@dataclass
+class Data:
+    """Class for storing various data objects"""
+
+    train_df: pd.DataFrame
+    test_df: pd.DataFrame
+    movies_df: pd.DataFrame
+    movie_map: Mapping[int, int]
+    user_map: Mapping[int, int]
+    genre_map: Mapping[int, int]
+    year_map: Mapping[int, int]
+
+    def num_users(self) -> int:
+        return len(self.user_map)
+
+    def num_movies(self) -> int:
+        return len(self.movie_map)
+
+    def num_genres(self) -> int:
+        return len(self.genre_map)
+
+    def num_years(self) -> int:
+        return len(self.year_map)
+
+
 def load_data(data_dir):
     movies_df = pd.read_csv(os.path.join(data_dir, "movies.csv"))
     ratings_df = pd.read_csv(os.path.join(data_dir, "ratings.csv"))
-    movie_to_idx = {m: i for i, m in enumerate(movies_df["movieId"].unique())}
-    user_to_idx = {u: i for i, u in enumerate(ratings_df["userId"].unique())}
+    movie_map = {m: i for i, m in enumerate(movies_df["movieId"].unique())}
+    user_map = {u: i for i, u in enumerate(ratings_df["userId"].unique())}
     genres = movies_df["genres"].apply(lambda g: g.split("|"))
     genres_unique = genres.apply(pd.Series).stack().reset_index(drop=True).unique()
-    genre_to_idx = {u: i for i, u in enumerate(genres_unique)}
+    genre_map = {u: i for i, u in enumerate(genres_unique)}
     year = movies_df["title"].apply(lambda t: get_year(t))
-    year_to_idx = {u: i for i, u in enumerate(year.unique())}
-    num_users = len(user_to_idx)
-    num_movies = len(movie_to_idx)
-    num_genres = len(genre_to_idx)
-    num_years = len(year_to_idx)
+    year_map = {u: i for i, u in enumerate(year.unique())}
+    num_users = len(user_map)
+    num_movies = len(movie_map)
+    num_genres = len(genre_map)
+    num_years = len(year_map)
     print("num_users:", num_users)
     print("num_movies:", num_movies)
     print("num_genres:", num_genres)
     print("num_years:", num_years)
     print("num_ratings:", ratings_df.shape[0])
 
-    ratings_train_df, ratings_test_df = train_test_split(
-        ratings_df, test_size=0.1, random_state=42
-    )
-    ratings_train_df = ratings_train_df.reset_index()[
-        ["userId", "movieId", "rating", "timestamp"]
-    ]
-    ratings_test_df = ratings_test_df.reset_index()[
-        ["userId", "movieId", "rating", "timestamp"]
-    ]
+    train_df, test_df = train_test_split(ratings_df, test_size=0.1, random_state=42)
+    train_df = train_df.reset_index()[["userId", "movieId", "rating", "timestamp"]]
+    test_df = test_df.reset_index()[["userId", "movieId", "rating", "timestamp"]]
 
-    return (
-        movies_df,
-        ratings_train_df,
-        ratings_test_df,
-        movie_to_idx,
-        user_to_idx,
-        genre_to_idx,
-        year_to_idx,
-    )
+    data = Data(train_df, test_df, movies_df, movie_map, user_map, genre_map, year_map)
+    return data
 
 
 class MovieLensDataset(Dataset):
-    def __init__(
-        self,
-        movies_df,
-        ratings_df,
-        movie_to_idx,
-        user_to_idx,
-        genre_to_idx,
-        year_to_idx,
-    ):
-        self.movie_title = movies_df.set_index("movieId")["title"].T.to_dict()
-        self.movie_genres = movies_df.set_index("movieId")["genres"].T.to_dict()
+    def __init__(self, data, ratings_df):
+        self.movie_title = data.movies_df.set_index("movieId")["title"].T.to_dict()
+        self.movie_genres = data.movies_df.set_index("movieId")["genres"].T.to_dict()
         self.ratings_df = ratings_df
-        self.movie_to_idx = movie_to_idx
-        self.user_to_idx = user_to_idx
-        self.genre_to_idx = genre_to_idx
-        self.year_to_idx = year_to_idx
+        self.movie_map = data.movie_map
+        self.user_map = data.user_map
+        self.genre_map = data.genre_map
+        self.year_map = data.year_map
 
     def __len__(self):
         return len(self.ratings_df)
@@ -108,24 +114,24 @@ class MovieLensDataset(Dataset):
         genre = genres[0]
 
         return {
-            "user_id": torch.tensor([self.user_to_idx[user_id]], dtype=torch.long),
-            "movie_id": torch.tensor([self.movie_to_idx[movie_id]], dtype=torch.long),
+            "user_id": torch.tensor([self.user_map[user_id]], dtype=torch.long),
+            "movie_id": torch.tensor([self.movie_map[movie_id]], dtype=torch.long),
             "rating": torch.tensor([rating], dtype=torch.float),
-            "genre_id": torch.tensor([self.genre_to_idx[genre]], dtype=torch.long),
-            "year_id": torch.tensor([self.year_to_idx[year]], dtype=torch.long),
+            "genre_id": torch.tensor([self.genre_map[genre]], dtype=torch.long),
+            "year_id": torch.tensor([self.year_map[year]], dtype=torch.long),
         }
 
 
 # Matrix Factorization model with user & item biases
 class MFSideFeaturesBias(nn.Module):
-    def __init__(self, num_users, num_movies, num_genres, num_years, embedding_dim):
+    def __init__(self, num_users, num_movies, num_genres, num_years):
         super(MFSideFeaturesBias, self).__init__()
-        self.user_embeds = nn.Embedding(num_users, embedding_dim)
-        self.movie_embeds = nn.Embedding(num_movies, embedding_dim)
+        self.user_embeds = nn.Embedding(num_users, FLAGS.embedding_dim)
+        self.movie_embeds = nn.Embedding(num_movies, FLAGS.embedding_dim)
         self.user_biases = nn.Embedding(num_users, 1)
         self.movie_biases = nn.Embedding(num_movies, 1)
-        self.genre_embeds = nn.Embedding(num_genres, embedding_dim)
-        self.year_embeds = nn.Embedding(num_years, embedding_dim)
+        self.genre_embeds = nn.Embedding(num_genres, FLAGS.embedding_dim)
+        self.year_embeds = nn.Embedding(num_years, FLAGS.embedding_dim)
 
     def forward(self, user_idx, movie_idx, genre_idx, year_idx):
         user = self.user_embeds(user_idx)
@@ -163,38 +169,75 @@ def get_correct_predictions(logit, target):
     return corrects
 
 
-def get_epoch_summary(epoch, train_running_loss, train_acc, test_acc):
+@dataclass
+class LogData:
+    """Dataclass holding training epoch log data"""
+
+    epoch: int
+    train_loss: float
+    train_acc: float
+    test_acc: float
+
+
+def get_epoch_summary(log_data: LogData):
     return "Epoch: %d | Loss: %.4f | Train Accuracy: %.2f | Test Accuracy: %.2f" % (
-        epoch,
-        train_running_loss,
-        train_acc,
-        test_acc,
+        log_data.epoch,
+        log_data.train_loss,
+        log_data.train_acc,
+        log_data.test_acc,
     )
 
 
-def write_training_log(
-    training_log, training_log_filepath, epoch, train_running_loss, train_acc, test_acc
-):
-    epoch_summary = get_epoch_summary(epoch, train_running_loss, train_acc, test_acc)
-    print(epoch_summary)
+def load_model(model):
+    log_path, model_path = get_path()
+    if not os.path.exists(log_path):
+        print(f"{log_path} doesn't exist. Not loading model.")
+        return None
+    if not os.path.exists(model_path):
+        print(f"{model_path} doesn't exist. Not loading model.")
+        return None
 
-    training_log.append((epoch, train_running_loss, train_acc, test_acc))
-    f = open(training_log_filepath, "w")
-    s = ""
-    for (epoch, train_running_loss, train_acc, test_acc) in training_log:
-        s += get_epoch_summary(epoch, train_running_loss, train_acc, test_acc)
-        s += "\n"
-    f.write(s)
-    f.close()
+    # Load model parameters
+    print(f"Loading model from {model_path}")
+    model.load_state_dict(torch.load(model_path))
+
+    # Load max epoch
+    lines = open(log_path).read().strip().split("\n")
+    lines = [l for l in lines if not l.startswith("#")]
+    last_line = lines[-1]
+    max_epoch = int(last_line.split(" | ")[0].split(": ")[1])
+    return model, max_epoch + 1
 
 
-def get_file_name():
+def get_path():
     prefix = sys.argv[0].split(".")[0]
     filename = f"{prefix}_{FLAGS.num_epochs}_{FLAGS.batch_size}"
     filename += f"_{FLAGS.learning_rate}_{FLAGS.embedding_dim}"
     filename += f"_{FLAGS.l2_regularization_factor}"
-    filename += f'_{datetime.datetime.now().strftime("%m%d%H%M%S")}.txt'
-    return filename
+    return filename + ".txt", filename + ".model"
+
+
+def checkpoint(epoch_data, model):
+    log_path, model_path = get_path()
+
+    # Read existing logs
+    lines = []
+    if os.path.exists(log_path):
+        lines = open(log_path).read().strip().split("\n")
+        lines = [l for l in lines if not l.startswith("#")]
+    print(get_epoch_summary(epoch_data))
+    lines.append(get_epoch_summary(epoch_data))
+
+    # Write the model
+    torch.save(model.state_dict(), model_path)
+
+    # Write log file
+    f = open(log_path, "w")
+    s = ""
+    for line in lines:
+        s += line + "\n"
+    f.write(s)
+    f.close()
 
 
 def main(argv):
@@ -206,31 +249,30 @@ def main(argv):
 
     # Load data
     data = load_data(FLAGS.data_dir)
-    movies, train_df, test_df, movie_map, user_map, genre_map, year_map = data
 
     # Dataloader
-    train_dataset = MovieLensDataset(
-        movies, train_df, movie_map, user_map, genre_map, year_map
-    )
+    train_dataset = MovieLensDataset(data, data.train_df)
     train_dataloader = DataLoader(
         train_dataset, batch_size=FLAGS.batch_size, shuffle=True, num_workers=0
     )
 
-    test_dataset = MovieLensDataset(
-        movies, test_df, movie_map, user_map, genre_map, year_map
-    )
+    test_dataset = MovieLensDataset(data, data.test_df)
     test_dataloader = DataLoader(
         test_dataset, batch_size=FLAGS.batch_size, shuffle=True, num_workers=0
     )
 
     model = MFSideFeaturesBias(
-        len(user_map),
-        len(movie_map),
-        len(genre_map),
-        len(year_map),
-        FLAGS.embedding_dim,
+        data.num_users(), data.num_movies(), data.num_genres(), data.num_years()
     )
     print(model)
+
+    # Load model from the checkpoint if it exists
+    out = load_model(model)
+    if out is not None:
+        (model, start_epoch) = out
+    else:
+        start_epoch = 0
+
     model = model.to(device)
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(
@@ -238,11 +280,9 @@ def main(argv):
         lr=FLAGS.learning_rate,
         weight_decay=FLAGS.l2_regularization_factor,
     )
-    training_log = []
-    training_log_filepath = get_file_name()
 
     # Train + Eval
-    for epoch in range(FLAGS.num_epochs):
+    for epoch in range(start_epoch, FLAGS.num_epochs):
         train_running_loss = 0.0
         train_corrects = 0.0
         train_count = 0
@@ -286,14 +326,11 @@ def main(argv):
             if FLAGS.debug and i == 2:
                 break
 
-        write_training_log(
-            training_log,
-            training_log_filepath,
-            epoch,
-            train_running_loss / train_count * FLAGS.batch_size,
-            train_corrects / train_count * 100.0,
-            test_corrects / test_count * 100.0,
-        )
+        train_loss = train_running_loss / train_count * FLAGS.batch_size
+        train_acc = train_corrects / train_count * 100.0
+        test_acc = test_corrects / test_count * 100.0
+        epoch_data = LogData(epoch, train_loss, train_acc, test_acc)
+        checkpoint(epoch_data, model)
 
 
 if __name__ == "__main__":
