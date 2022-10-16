@@ -24,6 +24,12 @@ flags.DEFINE_integer("num_epochs", 5, "Num epochs")
 flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
 flags.DEFINE_float("l2_regularization_factor", 0.0, "L2 regularization factor")
+flags.DEFINE_boolean("learn_biases", False, "Learn user and movie biases")
+flags.DEFINE_boolean(
+    "add_to_movie_embeds",
+    False,
+    "Add movie side features to movie embeddings before doing dot product",
+)
 
 
 def get_year(title):
@@ -122,21 +128,24 @@ class MovieLensDataset(Dataset):
         }
 
 
-# Matrix Factorization model with user & item biases
-class MFSideFeaturesBias(nn.Module):
+# Matrix Factorization model with side features.
+# User & Movie biases are optional.
+class MFSideFeatures(nn.Module):
     def __init__(self, num_users, num_movies, num_genres, num_years):
-        super(MFSideFeaturesBias, self).__init__()
+        super(MFSideFeatures, self).__init__()
         self.user_embeds = nn.Embedding(num_users, FLAGS.embedding_dim)
         self.movie_embeds = nn.Embedding(num_movies, FLAGS.embedding_dim)
-        self.user_biases = nn.Embedding(num_users, 1)
-        self.movie_biases = nn.Embedding(num_movies, 1)
+        if FLAGS.learn_biases:
+            self.user_biases = nn.Embedding(num_users, 1)
+            self.movie_biases = nn.Embedding(num_movies, 1)
         self.genre_embeds = nn.Embedding(num_genres, FLAGS.embedding_dim)
         self.year_embeds = nn.Embedding(num_years, FLAGS.embedding_dim)
 
     def forward(self, user_idx, movie_idx, genre_idx, year_idx):
         user = self.user_embeds(user_idx)
         movie = self.movie_embeds(movie_idx)
-        similarity = F.cosine_similarity(user, movie)
+        genre = self.genre_embeds(genre_idx)
+        year = self.year_embeds(year_idx)
         # User ratings can vary from 0.5 to 5.0 in increments of 0.5:
         # 0.5, 1.0, 1.5, ..., 4.5, 5.0
         # Adjust the similarity to map the output to 0.25 to 5.25.
@@ -145,20 +154,22 @@ class MFSideFeaturesBias(nn.Module):
         # - between 0.75 and 1.25 can be counted towards 1.0 rating.
         # And so on.
         # Cosine similarity can be between -1 and 1.
-        similarity = similarity * 2.5 + 2.75
+        if FLAGS.add_to_movie_embeds:
+            movie += genre + year
+            similarity = F.cosine_similarity(user, movie)
+            prediction = similarity * 2.5 + 2.75
+        else:
+            similarity = F.cosine_similarity(user, movie)
+            prediction = similarity * 2.5 + 2.75
+            prediction += F.cosine_similarity(user, genre)
+            prediction += F.cosine_similarity(user, year)
 
-        movie_bias = self.movie_biases(movie_idx).squeeze()
-        user_bias = self.user_biases(user_idx).squeeze()
-        genre = self.genre_embeds(genre_idx)
-        year = self.year_embeds(year_idx)
+        # Optionally, add user & movie biases
+        if FLAGS.learn_biases:
+            movie_bias = self.movie_biases(movie_idx).squeeze()
+            user_bias = self.user_biases(user_idx).squeeze()
+            prediction += user_bias + movie_bias
 
-        prediction = (
-            similarity
-            + user_bias
-            + movie_bias
-            + F.cosine_similarity(user, genre)
-            + F.cosine_similarity(user, year)
-        )
         return prediction
 
 
@@ -214,6 +225,7 @@ def get_path():
     filename = f"{prefix}_{FLAGS.num_epochs}_{FLAGS.batch_size}"
     filename += f"_{FLAGS.learning_rate}_{FLAGS.embedding_dim}"
     filename += f"_{FLAGS.l2_regularization_factor}"
+    filename += f"_{FLAGS.learn_biases}_{FLAGS.add_to_movie_embeds}"
     return filename + ".txt", filename + ".model"
 
 
@@ -261,7 +273,7 @@ def main(argv):
         test_dataset, batch_size=FLAGS.batch_size, shuffle=True, num_workers=0
     )
 
-    model = MFSideFeaturesBias(
+    model = MFSideFeatures(
         data.num_users(), data.num_movies(), data.num_genres(), data.num_years()
     )
     print(model)
