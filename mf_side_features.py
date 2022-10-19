@@ -25,11 +25,6 @@ flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
 flags.DEFINE_float("l2_regularization_factor", 0.0, "L2 regularization factor")
 flags.DEFINE_boolean("learn_biases", False, "Learn user and movie biases")
-flags.DEFINE_boolean(
-    "add_to_movie_embeds",
-    False,
-    "Add movie side features to movie embeddings before doing dot product",
-)
 
 
 def get_year(title):
@@ -146,6 +141,11 @@ class MFSideFeatures(nn.Module):
         movie = self.movie_embeds(movie_idx)
         genre = self.genre_embeds(genre_idx)
         year = self.year_embeds(year_idx)
+
+        # Augment movie embeddings by adding movie metadata embeddings
+        movie += genre + year
+        similarity = F.cosine_similarity(user, movie)
+
         # User ratings can vary from 0.5 to 5.0 in increments of 0.5:
         # 0.5, 1.0, 1.5, ..., 4.5, 5.0
         # Adjust the similarity to map the output to 0.25 to 5.25.
@@ -154,15 +154,7 @@ class MFSideFeatures(nn.Module):
         # - between 0.75 and 1.25 can be counted towards 1.0 rating.
         # And so on.
         # Cosine similarity can be between -1 and 1.
-        if FLAGS.add_to_movie_embeds:
-            movie += genre + year
-            similarity = F.cosine_similarity(user, movie)
-            prediction = similarity * 2.5 + 2.75
-        else:
-            similarity = F.cosine_similarity(user, movie)
-            prediction = similarity * 2.5 + 2.75
-            prediction += F.cosine_similarity(user, genre)
-            prediction += F.cosine_similarity(user, year)
+        prediction = similarity * 2.5 + 2.75
 
         # Optionally, add user & movie biases
         if FLAGS.learn_biases:
@@ -225,7 +217,7 @@ def get_path():
     filename = f"{prefix}_{FLAGS.num_epochs}_{FLAGS.batch_size}"
     filename += f"_{FLAGS.learning_rate}_{FLAGS.embedding_dim}"
     filename += f"_{FLAGS.l2_regularization_factor}"
-    filename += f"_{FLAGS.learn_biases}_{FLAGS.add_to_movie_embeds}"
+    filename += f"_{FLAGS.learn_biases}"
     return filename + ".txt", filename + ".model"
 
 

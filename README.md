@@ -29,6 +29,5 @@ python3 mf_side_features.py --num_epochs=50 \
                             --learning_rate=1e-3 \
                             --embedding_dim=128 \
                             --l2_regularization_factor=1e-6 \
-                            --learn_biases=True \
-                            --add_to_movie_embeds=True
+                            --learn_biases=True
 ```
