@@ -24,6 +24,8 @@ flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
 flags.DEFINE_float("l2_regularization_factor", 0.0, "L2 regularization factor")
 flags.DEFINE_boolean("learn_biases", False, "Learn user and movie biases")
+flags.DEFINE_boolean("add_dropout", False, "Add Dropout")
+flags.DEFINE_float("dropout", 0.25, "Dropout")
 
 
 @dataclass
@@ -99,9 +101,17 @@ class Factorization(nn.Module):
         self.user_embeds = nn.Embedding(num_users, FLAGS.embedding_dim)
         self.movie_embeds = nn.Embedding(num_movies, FLAGS.embedding_dim)
 
+        if FLAGS.add_dropout:
+            self.dropout = nn.Dropout(FLAGS.dropout)
+
     def forward(self, user_idx, movie_idx):
         user = self.user_embeds(user_idx)
         movie = self.movie_embeds(movie_idx)
+
+        if FLAGS.add_dropout:
+            user = self.dropout(user)
+            movie = self.dropout(movie)
+
         similarity = F.cosine_similarity(user, movie)
 
         # User ratings can vary from 0.5 to 5.0 in increments of 0.5:
@@ -125,9 +135,21 @@ class FactorizationBias(nn.Module):
         self.user_biases = nn.Embedding(num_users, 1)
         self.movie_biases = nn.Embedding(num_movies, 1)
 
+        if FLAGS.add_dropout:
+            self.dropout = nn.Dropout(FLAGS.dropout)
+
     def forward(self, user_idx, movie_idx):
         user = self.user_embeds(user_idx)
         movie = self.movie_embeds(movie_idx)
+        movie_bias = self.movie_biases(movie_idx)
+        user_bias = self.user_biases(user_idx)
+
+        if FLAGS.add_dropout:
+            user = self.dropout(user)
+            movie = self.dropout(movie)
+            user_bias = self.dropout(user_bias)
+            movie_bias = self.dropout(movie_bias)
+
         similarity = F.cosine_similarity(user, movie)
         # User ratings can vary from 0.5 to 5.0 in increments of 0.5:
         # 0.5, 1.0, 1.5, ..., 4.5, 5.0
@@ -139,8 +161,6 @@ class FactorizationBias(nn.Module):
         # Cosine similarity can be between -1 and 1.
         similarity = similarity * 2.5 + 2.75
 
-        movie_bias = self.movie_biases(movie_idx)
-        user_bias = self.user_biases(user_idx)
         prediction = similarity + user_bias.squeeze() + movie_bias.squeeze()
         return prediction
 
@@ -197,6 +217,7 @@ def get_path():
     filename = f"{prefix}_{FLAGS.num_epochs}_{FLAGS.batch_size}"
     filename += f"_{FLAGS.learning_rate}_{FLAGS.embedding_dim}"
     filename += f"_{FLAGS.l2_regularization_factor}_{FLAGS.learn_biases}"
+    filename += f"_{FLAGS.add_dropout}_{FLAGS.dropout}"
     return filename + ".txt", filename + ".model"
 
 
@@ -230,6 +251,8 @@ def main(argv):
     print("Num epochs:", FLAGS.num_epochs)
     print("L2 regularization factor:", FLAGS.l2_regularization_factor)
     print("Learn biases:", FLAGS.learn_biases)
+    print("Add Dropout:", FLAGS.add_dropout)
+    print("Dropout:", FLAGS.dropout)
 
     # Load data
     data = load_data(FLAGS.data_dir)
