@@ -224,7 +224,6 @@ def get_path():
     filename = f"{prefix}_{FLAGS.num_epochs}_{FLAGS.batch_size}"
     filename += f"_{FLAGS.learning_rate}_{FLAGS.embedding_dim}"
     filename += f"_{FLAGS.l2_regularization_factor}"
-    filename += f"_{FLAGS.learn_biases}"
     filename += f"_{FLAGS.add_dropout}_{FLAGS.dropout}"
     return filename + ".txt", filename + ".model"
 
