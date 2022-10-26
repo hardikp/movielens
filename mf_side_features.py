@@ -23,7 +23,6 @@ flags.DEFINE_integer("num_epochs", 5, "Num epochs")
 flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
 flags.DEFINE_float("l2_regularization_factor", 0.0, "L2 regularization factor")
-flags.DEFINE_boolean("learn_biases", False, "Learn user and movie biases")
 flags.DEFINE_boolean("add_dropout", False, "Add Dropout")
 flags.DEFINE_float("dropout", 0.25, "Dropout")
 
@@ -131,9 +130,8 @@ class MFSideFeatures(nn.Module):
         super(MFSideFeatures, self).__init__()
         self.user_embeds = nn.Embedding(num_users, FLAGS.embedding_dim)
         self.movie_embeds = nn.Embedding(num_movies, FLAGS.embedding_dim)
-        if FLAGS.learn_biases:
-            self.user_biases = nn.Embedding(num_users, 1)
-            self.movie_biases = nn.Embedding(num_movies, 1)
+        self.user_biases = nn.Embedding(num_users, 1)
+        self.movie_biases = nn.Embedding(num_movies, 1)
         self.genre_embeds = nn.Embedding(num_genres, FLAGS.embedding_dim)
         self.year_embeds = nn.Embedding(num_years, FLAGS.embedding_dim)
 
@@ -145,12 +143,16 @@ class MFSideFeatures(nn.Module):
         movie = self.movie_embeds(movie_idx)
         genre = self.genre_embeds(genre_idx)
         year = self.year_embeds(year_idx)
+        movie_bias = self.movie_biases(movie_idx).squeeze()
+        user_bias = self.user_biases(user_idx).squeeze()
 
         if FLAGS.add_dropout:
             user = self.dropout(user)
             movie = self.dropout(movie)
             genre = self.dropout(genre)
             year = self.dropout(year)
+            movie_bias = self.dropout(movie_bias)
+            user_bias = self.dropout(user_bias)
 
         # Augment movie embeddings by adding movie metadata embeddings
         movie += genre + year
@@ -164,18 +166,8 @@ class MFSideFeatures(nn.Module):
         # - between 0.75 and 1.25 can be counted towards 1.0 rating.
         # And so on.
         # Cosine similarity can be between -1 and 1.
-        prediction = similarity * 2.5 + 2.75
-
-        # Optionally, add user & movie biases
-        if FLAGS.learn_biases:
-            movie_bias = self.movie_biases(movie_idx).squeeze()
-            user_bias = self.user_biases(user_idx).squeeze()
-
-            if FLAGS.add_dropout:
-                movie_bias = self.dropout(movie_bias)
-                user_bias = self.dropout(user_bias)
-
-            prediction += user_bias + movie_bias
+        similarity = similarity * 2.5 + 2.75
+        prediction = similarity + user_bias + movie_bias
 
         return prediction
 

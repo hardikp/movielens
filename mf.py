@@ -141,8 +141,8 @@ class FactorizationBias(nn.Module):
     def forward(self, user_idx, movie_idx):
         user = self.user_embeds(user_idx)
         movie = self.movie_embeds(movie_idx)
-        movie_bias = self.movie_biases(movie_idx)
-        user_bias = self.user_biases(user_idx)
+        movie_bias = self.movie_biases(movie_idx).squeeze()
+        user_bias = self.user_biases(user_idx).squeeze()
 
         if FLAGS.add_dropout:
             user = self.dropout(user)
@@ -160,8 +160,7 @@ class FactorizationBias(nn.Module):
         # And so on.
         # Cosine similarity can be between -1 and 1.
         similarity = similarity * 2.5 + 2.75
-
-        prediction = similarity + user_bias.squeeze() + movie_bias.squeeze()
+        prediction = similarity + user_bias + movie_bias
         return prediction
 
 
