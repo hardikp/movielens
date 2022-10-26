@@ -24,7 +24,7 @@ flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
 flags.DEFINE_float("l2_regularization_factor", 0.0, "L2 regularization factor")
 flags.DEFINE_boolean("add_dropout", False, "Add Dropout")
-flags.DEFINE_float("dropout", 0.25, "Dropout")
+flags.DEFINE_float("dropout", 0.0, "Dropout")
 
 
 def get_year(title):
