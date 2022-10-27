@@ -26,6 +26,8 @@ flags.DEFINE_float("l2_regularization_factor", 0.0, "L2 regularization factor")
 flags.DEFINE_boolean("learn_biases", False, "Learn user and movie biases")
 flags.DEFINE_boolean("add_dropout", False, "Add Dropout")
 flags.DEFINE_float("dropout", 0.25, "Dropout")
+flags.DEFINE_boolean("add_user_bias", True, "Learn movie biases")
+flags.DEFINE_boolean("add_movie_bias", True, "Learn user biases")
 
 
 @dataclass
@@ -160,7 +162,11 @@ class FactorizationBias(nn.Module):
         # And so on.
         # Cosine similarity can be between -1 and 1.
         similarity = similarity * 2.5 + 2.75
-        prediction = similarity + user_bias + movie_bias
+        prediction = similarity
+        if FLAGS.add_user_bias:
+            prediction += user_bias
+        if FLAGS.add_movie_bias:
+            prediction += movie_bias
         return prediction
 
 
@@ -217,6 +223,7 @@ def get_path():
     filename += f"_{FLAGS.learning_rate}_{FLAGS.embedding_dim}"
     filename += f"_{FLAGS.l2_regularization_factor}_{FLAGS.learn_biases}"
     filename += f"_{FLAGS.add_dropout}_{FLAGS.dropout}"
+    filename += f"_{FLAGS.add_user_bias}_{FLAGS.add_movie_bias}"
     return filename + ".txt", filename + ".model"
 
 
@@ -252,6 +259,8 @@ def main(argv):
     print("Learn biases:", FLAGS.learn_biases)
     print("Add Dropout:", FLAGS.add_dropout)
     print("Dropout:", FLAGS.dropout)
+    print("Add User Bias:", FLAGS.add_user_bias)
+    print("Add Movie Bias:", FLAGS.add_movie_bias)
 
     # Load data
     data = load_data(FLAGS.data_dir)

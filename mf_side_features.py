@@ -23,8 +23,6 @@ flags.DEFINE_integer("num_epochs", 5, "Num epochs")
 flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
 flags.DEFINE_float("l2_regularization_factor", 0.0, "L2 regularization factor")
-flags.DEFINE_boolean("add_dropout", False, "Add Dropout")
-flags.DEFINE_float("dropout", 0.0, "Dropout")
 
 
 def get_year(title):
@@ -135,9 +133,6 @@ class MFSideFeatures(nn.Module):
         self.genre_embeds = nn.Embedding(num_genres, FLAGS.embedding_dim)
         self.year_embeds = nn.Embedding(num_years, FLAGS.embedding_dim)
 
-        if FLAGS.add_dropout:
-            self.dropout = nn.Dropout(FLAGS.dropout)
-
     def forward(self, user_idx, movie_idx, genre_idx, year_idx):
         user = self.user_embeds(user_idx)
         movie = self.movie_embeds(movie_idx)
@@ -145,14 +140,6 @@ class MFSideFeatures(nn.Module):
         year = self.year_embeds(year_idx)
         movie_bias = self.movie_biases(movie_idx).squeeze()
         user_bias = self.user_biases(user_idx).squeeze()
-
-        if FLAGS.add_dropout:
-            user = self.dropout(user)
-            movie = self.dropout(movie)
-            genre = self.dropout(genre)
-            year = self.dropout(year)
-            movie_bias = self.dropout(movie_bias)
-            user_bias = self.dropout(user_bias)
 
         # Augment movie embeddings by adding movie metadata embeddings
         movie += genre + year
@@ -224,7 +211,6 @@ def get_path():
     filename = f"{prefix}_{FLAGS.num_epochs}_{FLAGS.batch_size}"
     filename += f"_{FLAGS.learning_rate}_{FLAGS.embedding_dim}"
     filename += f"_{FLAGS.l2_regularization_factor}"
-    filename += f"_{FLAGS.add_dropout}_{FLAGS.dropout}"
     return filename + ".txt", filename + ".model"
 
 
@@ -257,8 +243,6 @@ def main(argv):
     print("Learning rate:", FLAGS.learning_rate)
     print("Num epochs:", FLAGS.num_epochs)
     print("L2 regularization factor:", FLAGS.l2_regularization_factor)
-    print("Add Dropout:", FLAGS.add_dropout)
-    print("Dropout:", FLAGS.dropout)
 
     # Load data
     data = load_data(FLAGS.data_dir)
