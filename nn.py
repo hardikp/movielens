@@ -149,16 +149,6 @@ def collate_fn(batch):
     return (user_ids, movie_ids, ratings, genres, genre_offsets, years)
 
 
-# class EmbeddingBagWrapper(nn.Module):
-#     def __init__(self, count, embedding_dim) -> None:
-#         super(EmbeddingBagWrapper, self).__init__()
-#         self.embedding_bag = nn.EmbeddingBag(count, embedding_dim)
-
-#     def forward(self, x):
-#         idxs, offsets = x
-#         return self.embedding_bag(idxs, offsets)
-
-
 # Function to create a user/movie/genre/year tower
 def get_tower(l_size):
     layer_sizes = [int(i) for i in l_size.split(",")]
@@ -197,7 +187,6 @@ class NeuralNet(nn.Module):
 
         in_size = user_size + movie_size + genre_size + year_size + 1
         self.combined_linear = nn.Linear(in_size, 1)
-        self.dropout = nn.Dropout(FLAGS.dropout)
 
     def forward(self, user_idx, movie_idx, genre_idxs, genre_offsets, year_idx):
         user = self.user_embeds(user_idx)
