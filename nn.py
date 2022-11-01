@@ -22,16 +22,18 @@ flags.DEFINE_integer("embedding_dim", 16, "Embedding dimension")
 flags.DEFINE_integer("num_epochs", 5, "Num epochs")
 flags.DEFINE_string("data_dir", "~/data/ml-25m", "MovieLens data directory")
 flags.DEFINE_boolean("debug", False, "Debug flag")
-flags.DEFINE_float("l2_regularization_factor", 0.0, "L2 regularization factor")
+flags.DEFINE_float("l2", 0.0, "L2 regularization factor")
 flags.DEFINE_float("dropout", 0.25, "Dropout")
-flags.DEFINE_boolean("apply_emb_dropout", True, "Apply Dropout to Embeddings")
 flags.DEFINE_string("l_size_user", "16", "user_id linear layer sizes comma separated")
 flags.DEFINE_string("l_size_movie", "16", "movie_id linear layer sizes comma separated")
 flags.DEFINE_string(
     "l_size_genre", "16", "genre_ids linear layer sizes comma separated"
 )
 flags.DEFINE_string("l_size_year", "16", "year linear layer sizes comma separated")
-flags.DEFINE_boolean("add_layer_norm", True, "Add Layer Normalization")
+flags.DEFINE_string("norm_type", "LayerNorm", "Specify Batch/Layer Normalization")
+flags.DEFINE_boolean(
+    "init_weights", True, "Initialize weights using xavier initialization"
+)
 
 
 def get_year(title):
@@ -155,10 +157,22 @@ def get_tower(l_size):
     layers = []
     in_size = FLAGS.embedding_dim
     for user_layer_size in layer_sizes:
-        layers.append(nn.Linear(in_size, user_layer_size))
-        if FLAGS.add_layer_norm:
+        # Linear layer
+        l = nn.Linear(in_size, user_layer_size)
+        if FLAGS.init_weights:
+            gain = nn.init.calculate_gain("relu")
+            nn.init.xavier_uniform_(l.weight, gain=gain)
+        layers.append(l)
+
+        # Optionally, initialize the weights
+        if FLAGS.norm_type == "LayerNorm":
             layers.append(nn.LayerNorm(user_layer_size))
+        elif FLAGS.norm_type == "BatchNorm":
+            layers.append(nn.BatchNorm1d(user_layer_size))
+
+        # Activation function
         layers.append(nn.ReLU())
+        # Dropout
         layers.append(nn.Dropout(FLAGS.dropout))
         in_size = user_layer_size
 
@@ -166,21 +180,36 @@ def get_tower(l_size):
     return tower, layer_sizes[-1]
 
 
+# Function to create embedding layers
+def get_embeddings(count, create_bag=False):
+    if create_bag:
+        embeds = nn.EmbeddingBag(count, FLAGS.embedding_dim)
+    else:
+        embeds = nn.Embedding(count, FLAGS.embedding_dim)
+
+    # Optionally, initialize the weights
+    if FLAGS.init_weights:
+        gain = nn.init.calculate_gain("relu")
+        nn.init.xavier_uniform_(embeds.weight, gain=gain)
+
+    return embeds
+
+
 # Model
 class NeuralNet(nn.Module):
     def __init__(self, num_users, num_movies, num_genres, num_years):
         super(NeuralNet, self).__init__()
-        self.user_embeds = nn.Embedding(num_users, FLAGS.embedding_dim)
+        self.user_embeds = get_embeddings(num_users)
         self.user_tower, user_size = get_tower(FLAGS.l_size_user)
-        self.movie_embeds = nn.Embedding(num_movies, FLAGS.embedding_dim)
+        self.movie_embeds = get_embeddings(num_movies)
         self.movie_tower, movie_size = get_tower(FLAGS.l_size_movie)
         if len(FLAGS.l_size_genre) > 0:
-            self.genre_embeds = nn.EmbeddingBag(num_genres, FLAGS.embedding_dim)
+            self.genre_embeds = get_embeddings(num_genres, create_bag=True)
             self.genre_tower, genre_size = get_tower(FLAGS.l_size_genre)
         else:
             genre_size = 0
         if len(FLAGS.l_size_year) > 0:
-            self.year_embeds = nn.Embedding(num_years, FLAGS.embedding_dim)
+            self.year_embeds = get_embeddings(num_years)
             self.year_tower, year_size = get_tower(FLAGS.l_size_year)
         else:
             year_size = 0
@@ -279,9 +308,10 @@ def get_path():
     prefix = sys.argv[0].split(".")[0]
     filename = f"{prefix}_{FLAGS.num_epochs}_{FLAGS.batch_size}"
     filename += f"_{FLAGS.learning_rate}_{FLAGS.embedding_dim}"
-    filename += f"_{FLAGS.l2_regularization_factor}_{FLAGS.dropout}"
+    filename += f"_{FLAGS.l2}_{FLAGS.dropout}"
     filename += f"_{FLAGS.l_size_user}_{FLAGS.l_size_movie}"
     filename += f"_{FLAGS.l_size_genre}_{FLAGS.l_size_year}"
+    filename += f"_{FLAGS.norm_type}_{FLAGS.init_weights}"
     return filename + ".txt", filename + ".model"
 
 
@@ -313,12 +343,14 @@ def main(argv):
     print("Embedding size:", FLAGS.embedding_dim)
     print("Learning rate:", FLAGS.learning_rate)
     print("Num epochs:", FLAGS.num_epochs)
-    print("L2 regularization factor:", FLAGS.l2_regularization_factor)
+    print("L2 regularization factor:", FLAGS.l2)
     print("Dropout:", FLAGS.dropout)
     print("l_size_user:", FLAGS.l_size_user)
     print("l_size_movie:", FLAGS.l_size_movie)
     print("l_size_genre:", FLAGS.l_size_genre)
     print("l_size_year:", FLAGS.l_size_year)
+    print("norm_type:", FLAGS.norm_type)
+    print("init_weights:", FLAGS.init_weights)
 
     # Load data
     data = load_data(FLAGS.data_dir)
@@ -357,9 +389,7 @@ def main(argv):
 
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(
-        model.parameters(),
-        lr=FLAGS.learning_rate,
-        weight_decay=FLAGS.l2_regularization_factor,
+        model.parameters(), lr=FLAGS.learning_rate, weight_decay=FLAGS.l2
     )
 
     # Train + Eval
