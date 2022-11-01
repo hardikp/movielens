@@ -25,10 +25,13 @@ flags.DEFINE_boolean("debug", False, "Debug flag")
 flags.DEFINE_float("l2_regularization_factor", 0.0, "L2 regularization factor")
 flags.DEFINE_float("dropout", 0.25, "Dropout")
 flags.DEFINE_boolean("apply_emb_dropout", True, "Apply Dropout to Embeddings")
-flags.DEFINE_integer("l_size_user", 16, "user_id linear layer size")
-flags.DEFINE_integer("l_size_movie", 16, "movie_id linear layer size")
-flags.DEFINE_integer("l_size_genre", 16, "genre_ids linear layer size")
-flags.DEFINE_integer("l_size_year", 16, "year linear layer size")
+flags.DEFINE_string("l_size_user", "16", "user_id linear layer sizes comma separated")
+flags.DEFINE_string("l_size_movie", "16", "movie_id linear layer sizes comma separated")
+flags.DEFINE_string(
+    "l_size_genre", "16", "genre_ids linear layer sizes comma separated"
+)
+flags.DEFINE_string("l_size_year", "16", "year linear layer sizes comma separated")
+flags.DEFINE_boolean("add_layer_norm", True, "Add Layer Normalization")
 
 
 def get_year(title):
@@ -146,67 +149,78 @@ def collate_fn(batch):
     return (user_ids, movie_ids, ratings, genres, genre_offsets, years)
 
 
+# class EmbeddingBagWrapper(nn.Module):
+#     def __init__(self, count, embedding_dim) -> None:
+#         super(EmbeddingBagWrapper, self).__init__()
+#         self.embedding_bag = nn.EmbeddingBag(count, embedding_dim)
+
+#     def forward(self, x):
+#         idxs, offsets = x
+#         return self.embedding_bag(idxs, offsets)
+
+
+# Function to create a user/movie/genre/year tower
+def get_tower(l_size):
+    layer_sizes = [int(i) for i in l_size.split(",")]
+    layers = []
+    in_size = FLAGS.embedding_dim
+    for user_layer_size in layer_sizes:
+        layers.append(nn.Linear(in_size, user_layer_size))
+        if FLAGS.add_layer_norm:
+            layers.append(nn.LayerNorm(user_layer_size))
+        layers.append(nn.ReLU())
+        layers.append(nn.Dropout(FLAGS.dropout))
+        in_size = user_layer_size
+
+    tower = nn.Sequential(*layers)
+    return tower, layer_sizes[-1]
+
+
 # Model
 class NeuralNet(nn.Module):
     def __init__(self, num_users, num_movies, num_genres, num_years):
         super(NeuralNet, self).__init__()
         self.user_embeds = nn.Embedding(num_users, FLAGS.embedding_dim)
-        self.user_linear = nn.Linear(FLAGS.embedding_dim, FLAGS.l_size_user)
-
+        self.user_tower, user_size = get_tower(FLAGS.l_size_user)
         self.movie_embeds = nn.Embedding(num_movies, FLAGS.embedding_dim)
-        self.movie_linear = nn.Linear(FLAGS.embedding_dim, FLAGS.l_size_movie)
-
-        if FLAGS.l_size_genre > 0:
+        self.movie_tower, movie_size = get_tower(FLAGS.l_size_movie)
+        if len(FLAGS.l_size_genre) > 0:
             self.genre_embeds = nn.EmbeddingBag(num_genres, FLAGS.embedding_dim)
-            self.genre_linear = nn.Linear(FLAGS.embedding_dim, FLAGS.l_size_genre)
-
-        if FLAGS.l_size_year > 0:
+            self.genre_tower, genre_size = get_tower(FLAGS.l_size_genre)
+        else:
+            genre_size = 0
+        if len(FLAGS.l_size_year) > 0:
             self.year_embeds = nn.Embedding(num_years, FLAGS.embedding_dim)
-            self.year_linear = nn.Linear(FLAGS.embedding_dim, FLAGS.l_size_year)
+            self.year_tower, year_size = get_tower(FLAGS.l_size_year)
+        else:
+            year_size = 0
 
-        in_size = (
-            FLAGS.l_size_user
-            + FLAGS.l_size_movie
-            + FLAGS.l_size_genre
-            + FLAGS.l_size_year
-            + 1
-        )
+        in_size = user_size + movie_size + genre_size + year_size + 1
         self.combined_linear = nn.Linear(in_size, 1)
-
         self.dropout = nn.Dropout(FLAGS.dropout)
 
     def forward(self, user_idx, movie_idx, genre_idxs, genre_offsets, year_idx):
         user = self.user_embeds(user_idx)
         movie = self.movie_embeds(movie_idx)
-
-        if FLAGS.apply_emb_dropout:
-            user = self.dropout(user)
-            movie = self.dropout(movie)
-
         similarity = F.cosine_similarity(user, movie)
-        similarity = self.dropout(similarity)
 
-        user = self.dropout(F.relu(self.user_linear(user)))
-        movie = self.dropout(F.relu(self.movie_linear(movie)))
+        user = self.user_tower(user)
+        movie = self.movie_tower(movie)
 
-        if FLAGS.l_size_genre > 0:
+        if len(FLAGS.l_size_genre) > 0:
             genres = self.genre_embeds(genre_idxs, genre_offsets)
-            if FLAGS.apply_emb_dropout:
-                genres = self.dropout(genres)
-            genres = self.dropout(F.relu(self.genre_linear(genres)))
+            genres = self.genre_tower(genres)
 
-        if FLAGS.l_size_year > 0:
+        if len(FLAGS.l_size_year) > 0:
             year = self.year_embeds(year_idx)
-            if FLAGS.apply_emb_dropout:
-                year = self.dropout(year)
-            year = self.dropout(F.relu(self.year_linear(year)))
+            year = self.year_tower(year)
 
         similarity = torch.reshape(similarity, (-1, 1))
-        if FLAGS.l_size_genre > 0 and FLAGS.l_size_year > 0:
+        if len(FLAGS.l_size_genre) > 0 and len(FLAGS.l_size_year) > 0:
             out = torch.cat([user, movie, similarity, genres, year], 1)
-        elif FLAGS.l_size_genre > 0:
+        elif len(FLAGS.l_size_genre) > 0:
             out = torch.cat([user, movie, similarity, genres], 1)
-        elif FLAGS.l_size_year > 0:
+        elif len(FLAGS.l_size_year) > 0:
             out = torch.cat([user, movie, similarity, year], 1)
         else:
             out = torch.cat([user, movie, similarity], 1)
