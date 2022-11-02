@@ -216,11 +216,13 @@ class NeuralNet(nn.Module):
 
         in_size = user_size + movie_size + genre_size + year_size + 1
         self.combined_linear = nn.Linear(in_size, 1)
+        self.dropout = nn.Dropout(FLAGS.dropout)
 
     def forward(self, user_idx, movie_idx, genre_idxs, genre_offsets, year_idx):
         user = self.user_embeds(user_idx)
         movie = self.movie_embeds(movie_idx)
         similarity = F.cosine_similarity(user, movie)
+        similarity = self.dropout(similarity)
 
         user = self.user_tower(user)
         movie = self.movie_tower(movie)
