@@ -188,9 +188,9 @@ def get_embeddings(count, create_bag=False):
         embeds = nn.Embedding(count, FLAGS.embedding_dim)
 
     # Optionally, initialize the weights
-    if FLAGS.init_weights:
-        gain = nn.init.calculate_gain("relu")
-        nn.init.xavier_uniform_(embeds.weight, gain=gain)
+    # if FLAGS.init_weights:
+    #     gain = nn.init.calculate_gain("relu")
+    #     nn.init.xavier_uniform_(embeds.weight, gain=gain)
 
     return embeds
 
@@ -223,9 +223,10 @@ class NeuralNet(nn.Module):
         movie = self.movie_embeds(movie_idx)
         similarity = F.cosine_similarity(user, movie)
         similarity = self.dropout(similarity)
+        similarity = torch.reshape(similarity, (-1, 1))
 
-        user = self.user_tower(user)
-        movie = self.movie_tower(movie)
+        user = self.user_tower(self.dropout(user))
+        movie = self.movie_tower(self.dropout(movie))
 
         if len(FLAGS.l_size_genre) > 0:
             genres = self.genre_embeds(genre_idxs, genre_offsets)
@@ -235,7 +236,6 @@ class NeuralNet(nn.Module):
             year = self.year_embeds(year_idx)
             year = self.year_tower(year)
 
-        similarity = torch.reshape(similarity, (-1, 1))
         if len(FLAGS.l_size_genre) > 0 and len(FLAGS.l_size_year) > 0:
             out = torch.cat([user, movie, similarity, genres, year], 1)
         elif len(FLAGS.l_size_genre) > 0:
