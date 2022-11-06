@@ -34,6 +34,8 @@ flags.DEFINE_string("norm_type", "LayerNorm", "Specify Batch/Layer Normalization
 flags.DEFINE_boolean(
     "init_weights", True, "Initialize weights using xavier initialization"
 )
+flags.DEFINE_integer("genre_emb_size", 8, "Genre Embedding Size")
+flags.DEFINE_integer("year_emb_size", 8, "Year Embedding Size")
 
 
 def get_year(title):
@@ -259,6 +261,90 @@ class NeuralNet(nn.Module):
         return out
 
 
+# Function to create a user/movie/genre/year tower
+def get_tower1(in_size, out_sizes):
+    layers = []
+    for out_size in out_sizes:
+        # Linear layer
+        l = nn.Linear(in_size, out_size)
+        if FLAGS.init_weights:
+            gain = nn.init.calculate_gain("relu")
+            nn.init.xavier_uniform_(l.weight, gain=gain)
+        layers.append(l)
+
+        # Optionally, initialize the weights
+        if FLAGS.norm_type == "LayerNorm":
+            layers.append(nn.LayerNorm(out_size))
+        elif FLAGS.norm_type == "BatchNorm":
+            layers.append(nn.BatchNorm1d(out_size))
+
+        # Activation function
+        layers.append(nn.ReLU())
+        # Dropout
+        layers.append(nn.Dropout(FLAGS.dropout))
+        in_size = out_size
+
+    tower = nn.Sequential(*layers)
+    return tower
+
+
+# Model
+class NeuralNet1(nn.Module):
+    def __init__(self, num_users, num_movies, num_genres, num_years):
+        super(NeuralNet1, self).__init__()
+        self.user_embeds = nn.Embedding(num_users, FLAGS.embedding_dim)
+        self.movie_embeds = nn.Embedding(num_movies, FLAGS.embedding_dim)
+        if FLAGS.genre_emb_size > 0:
+            self.genre_embeds = nn.EmbeddingBag(num_genres, FLAGS.genre_emb_size)
+        if FLAGS.year_emb_size > 0:
+            self.year_embeds = nn.Embedding(num_years, FLAGS.year_emb_size)
+
+        in_size = (
+            FLAGS.embedding_dim
+            + FLAGS.embedding_dim
+            + FLAGS.genre_emb_size
+            + FLAGS.year_emb_size
+            + 1
+        )
+        linear_layers = [16]
+        self.tower = get_tower1(in_size, linear_layers)
+        self.combined_linear = nn.Linear(linear_layers[-1], 1)
+
+    def forward(self, user_idx, movie_idx, genre_idxs, genre_offsets, year_idx):
+        user = self.user_embeds(user_idx)
+        movie = self.movie_embeds(movie_idx)
+        similarity = F.cosine_similarity(user, movie)
+        similarity = torch.reshape(similarity, (-1, 1))
+        if FLAGS.genre_emb_size > 0:
+            genres = self.genre_embeds(genre_idxs, genre_offsets)
+        if FLAGS.year_emb_size > 0:
+            year = self.year_embeds(year_idx)
+
+        if FLAGS.genre_emb_size > 0 and FLAGS.year_emb_size > 0:
+            out = torch.cat([user, movie, similarity, genres, year], 1)
+        elif FLAGS.genre_emb_size > 0:
+            out = torch.cat([user, movie, similarity, genres], 1)
+        elif FLAGS.year_emb_size > 0:
+            out = torch.cat([user, movie, similarity, year], 1)
+        else:
+            out = torch.cat([user, movie, similarity], 1)
+
+        out = self.tower(out)
+        out = torch.sigmoid(self.combined_linear(out))
+        out = torch.reshape(out, (-1,))
+
+        # User ratings can vary from 0.5 to 5.0 in increments of 0.5:
+        # 0.5, 1.0, 1.5, ..., 4.5, 5.0
+        # Map the output to 0.25 to 5.25.
+        # This way, predicted values:
+        # - between 0.25 and 0.75 can be counted towards 0.5 rating.
+        # - between 0.75 and 1.25 can be counted towards 1.0 rating.
+        # And so on.
+        # Sigmoid output can be between 0 and 1.
+        out = out * 5.0 + 0.25
+        return out
+
+
 def get_correct_predictions(logit, target):
     batch_size = logit.shape[0]
     diff = torch.abs(target - logit)
@@ -314,6 +400,7 @@ def get_path():
     filename += f"_{FLAGS.l_size_user}_{FLAGS.l_size_movie}"
     filename += f"_{FLAGS.l_size_genre}_{FLAGS.l_size_year}"
     filename += f"_{FLAGS.norm_type}_{FLAGS.init_weights}"
+    filename += f"_{FLAGS.genre_emb_size}_{FLAGS.year_emb_size}"
     return filename + ".txt", filename + ".model"
 
 
@@ -353,6 +440,8 @@ def main(argv):
     print("l_size_year:", FLAGS.l_size_year)
     print("norm_type:", FLAGS.norm_type)
     print("init_weights:", FLAGS.init_weights)
+    print("genre_emb_size:", FLAGS.genre_emb_size)
+    print("year_emb_size:", FLAGS.year_emb_size)
 
     # Load data
     data = load_data(FLAGS.data_dir)
@@ -376,7 +465,7 @@ def main(argv):
         collate_fn=collate_fn,
     )
 
-    model = NeuralNet(
+    model = NeuralNet1(
         data.num_users(), data.num_movies(), data.num_genres(), data.num_years()
     )
     model = model.to(device)
